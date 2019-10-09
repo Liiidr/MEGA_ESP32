@@ -48,6 +48,7 @@
 #include "filter_resample.h"
 
 #include "joshvm_audio_wrapper.h"
+#include "joshvm_esp32_media.h"//test
 
 esp_audio_handle_t player;
 static const char *TAG = "AUDIO_WRAPPER";
@@ -62,6 +63,9 @@ static StaticTask_t joshvm_audio_state_task_TCB;
 static TaskHandle_t	joshvm_audio_state_task_handler;*/
 static audio_pipeline_handle_t pipeline;
 static audio_element_handle_t i2s_stream,spiffs_stream,mp3_decoder,filter;
+static int audio_pos = 0;
+
+
 
 extern void javanotify_simplespeech_event(int, int);
 static void joshvm_spiffs_audio_play_init(void);
@@ -77,7 +81,8 @@ static void esp_audio_state_task (void *para)
             || (esp_state.status == AUDIO_STATUS_FINISHED)
             || (esp_state.status == AUDIO_STATUS_ERROR)) {
 
-			javanotify_simplespeech_event(2, 0);			
+			javanotify_simplespeech_event(2, 0);
+			joshvm_esp32_media_callback();
         }
     }
     vTaskDelete(NULL);
@@ -168,7 +173,7 @@ static void setup_player(void)
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, ts_dec_cfg);
 
     // Set default volume
-    esp_audio_vol_set(player, 80);
+    esp_audio_vol_set(player, 50);
     AUDIO_MEM_SHOW(TAG);
     ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
@@ -279,8 +284,79 @@ void joshvm_spiffs_audio_play_handler(const char *url)
 {
 	audio_element_set_uri(spiffs_stream, url);
     audio_pipeline_run(pipeline);
-
 }
+
+void joshvm_spiffs_audio_stop_handler(void)
+{
+	audio_pipeline_terminate(pipeline);
+}
+
+audio_err_t joshvm_audio_pause(void)
+{
+	int ret;
+	esp_audio_pos_get(player, &audio_pos);
+    if((ret = esp_audio_stop(player, TERMINATION_TYPE_NOW)) == ESP_OK){
+		return ret;
+	}
+	return ret = ESP_FAIL;
+}
+
+void joshvm_audio_resume_handler(const char *url)
+{
+    //ESP_LOGI(TAG, "Resume audio, offset:%d url:%s", audio_info->offset, audio_info->url);
+    //player_pause = 0;
+    esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, audio_pos);
+}
+
+audio_err_t joshvm_audio_stop_handler(void)
+{
+    ESP_LOGI(TAG, "Stop audio play");
+	int ret;
+	ret =  esp_audio_stop(player, TERMINATION_TYPE_NOW);
+	return ret;
+}
+
+int joshvm_audio_get_state()
+{
+    esp_audio_state_t st = {0};
+    esp_audio_state_get(player, &st);
+    return st.status;
+}
+
+
+
+audio_err_t joshvm_volume_get_handler(int volume)
+{
+	int ret;
+	 if((ret = 	esp_audio_vol_get(player, &volume)) == ESP_OK){
+		return ret = ESP_OK;
+	 }
+	 return ret = ESP_FAIL;
+}
+
+audio_err_t joshvm_volume_set_handler(int volume)
+{
+	int ret;
+	 if((ret = 	esp_audio_vol_set(player, volume)) == ESP_OK){
+		return ret = ESP_OK;
+	 }
+	 return ret = ESP_FAIL;
+}
+
+
+void joshvm_volume_adjust_handler(int volume)
+{
+    ESP_LOGI(TAG, "adj_volume by %d", volume);
+    int vol = 0;
+    esp_audio_vol_get(player, &vol);
+    vol += volume;
+    int ret = esp_audio_vol_set(player, vol);
+    if (ret == 0) {
+       	ESP_LOGI(TAG, "report volume_changed");
+        //duer_dcs_on_volume_changed();
+    }
+}
+
 
 /*
 

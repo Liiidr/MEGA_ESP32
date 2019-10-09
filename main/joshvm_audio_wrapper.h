@@ -53,6 +53,15 @@ void joshvm_audio_wrapper_init(void);
 int joshvm_audio_play_handler(const char *url);
 
 void joshvm_spiffs_audio_play_handler(const char *url);
+void joshvm_spiffs_audio_stop_handler(void);
+audio_err_t joshvm_audio_pause(void);
+void joshvm_audio_resume_handler(const char *url);
+audio_err_t joshvm_audio_stop_handler(void);
+int joshvm_audio_get_state();
+
+audio_err_t joshvm_volume_get_handler(int volume);
+audio_err_t joshvm_volume_set_handler(int volume);
+void joshvm_volume_adjust_handler(int volume);
 
 
 #if 0

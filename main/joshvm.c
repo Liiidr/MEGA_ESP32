@@ -63,6 +63,9 @@
 #include "esp_peripherals.h"
 #include "app_wifi_service.h"
 
+#include "joshvm_esp32_media.h"
+#include "sd_card_init.h"
+
 static const char *TAG              = "JOSHVM_Audio";
 extern esp_audio_handle_t           player;
 static display_service_handle_t disp_serv = NULL;
@@ -108,6 +111,9 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
 		if(pdPASS != xReturn)ESP_LOGE(TAG, "QUEUE_WAKEUP_START sended faild");
 
 		ESP_LOGE(TAG,"REC_EVENT_WAKEUP_START heap free size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+
+		//esp32_playback_voice(4);
+		test_esp32_media();
 
 		//display_service_set_pattern(disp_serv, DISPLAY_PATTERN_TURN_ON, 0);
 
@@ -545,6 +551,7 @@ void joshvm_app_init(void)
 
     //audio_board_key_init(set);
     //dio_board_sdcard_init(set);
+    app_sdcard_init();
     disp_serv = audio_board_led_init();
 
 	app_wifi_service();
@@ -574,10 +581,18 @@ void joshvm_app_init(void)
 	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);									
 	joshvm_audio_wrapper_init();
 
+	
+	
 	while (1) {
 
   		JavaTask();
 		//JavaNativeTest();
+		vTaskDelay(1000 / portTICK_PERIOD_MS);
+		test_esp32_media();
+		
+
+
+	
 
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);
