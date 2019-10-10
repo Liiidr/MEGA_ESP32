@@ -18,7 +18,7 @@ static int8_t audio_status = 0;
 
 //------------------test-------------------
 void *handle_player_test;
-#define MP3_URI_TEST "file://userdata/ding.mp3"
+#define MP3_URI_TEST "file://sdcard/48000.wav"
 
 static void media_player_callback_test(void*handle,int para)
 {
@@ -30,7 +30,7 @@ static void media_player_callback_test(void*handle,int para)
 //留给播放结束的回调
 void joshvm_esp32_media_callback()
 {
-	audio_status = JOSHVM_MEDIA_RESERVE;
+	//audio_status = JOSHVM_MEDIA_RESERVE;
 	((joshvm_media_t *)handle_player_test)->joshvm_media_u.joshvm_media_mediaplayer.callback(NULL,0);//need to rewrite
 }
 
@@ -116,12 +116,12 @@ int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, in
 int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int))
 {
 	int ret = 0;
-	if(1){//audio_status != JOSHVM_MEDIA_PAUSED){	//start		
+	if(audio_status != JOSHVM_MEDIA_PAUSED){	//start		
 		switch(handle->media_type){
 			case MEDIA_PLAYER:
 				//handle->joshvm_media_u.joshvm_media_mediaplayer.start(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
-				//joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
-				joshvm_spiffs_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
+				joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
+				//joshvm_spiffs_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
 				handle->joshvm_media_u.joshvm_media_mediaplayer.callback = callback;
 				ret = JOSHVM_OK;
 				break;
@@ -402,11 +402,13 @@ void test_esp32_media(void)
 	//joshvm_esp32_media_prepare(handle_player_test,NULL);
 	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
 
-	//vTaskDelay(15000 / portTICK_PERIOD_MS);	
+	vTaskDelay(30000 / portTICK_PERIOD_MS);	
 
-	//joshvm_esp32_media_pause(handle_player_test);
+	joshvm_esp32_media_pause(handle_player_test);
 
-	//vTaskDelay(5000 / portTICK_PERIOD_MS);	
+	vTaskDelay(5000 / portTICK_PERIOD_MS);	
+
+	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
 	
 }
 

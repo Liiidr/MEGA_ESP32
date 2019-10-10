@@ -570,7 +570,7 @@ void joshvm_app_init(void)
     eng.extension = NULL;
     eng.support_encoding = false;
     eng.user_data = NULL;
-	rec_engine_create(&eng);
+	//rec_engine_create(&eng);
 
 	Queue_vad_play = xQueueCreate(QUEUE_VAD_PLAY_LEN, QUEUE_VAD_PLAY_SIZE);
 	if(NULL == Queue_vad_play){
@@ -585,9 +585,8 @@ void joshvm_app_init(void)
 	
 	while (1) {
 
-  		JavaTask();
+  		//JavaTask();
 		//JavaNativeTest();
-		vTaskDelay(1000 / portTICK_PERIOD_MS);
 		test_esp32_media();
 		
 

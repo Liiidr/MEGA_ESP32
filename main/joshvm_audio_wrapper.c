@@ -294,10 +294,12 @@ void joshvm_spiffs_audio_stop_handler(void)
 audio_err_t joshvm_audio_pause(void)
 {
 	int ret;
+	
+	esp_audio_pause(player);
 	esp_audio_pos_get(player, &audio_pos);
-    if((ret = esp_audio_stop(player, TERMINATION_TYPE_NOW)) == ESP_OK){
+    /*if((ret = esp_audio_stop(player, TERMINATION_TYPE_NOW)) == ESP_OK){
 		return ret;
-	}
+	}*/
 	return ret = ESP_FAIL;
 }
 
@@ -305,7 +307,9 @@ void joshvm_audio_resume_handler(const char *url)
 {
     //ESP_LOGI(TAG, "Resume audio, offset:%d url:%s", audio_info->offset, audio_info->url);
     //player_pause = 0;
-    esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, audio_pos);
+    ESP_LOGI(TAG,"audio pos = %d*************",audio_pos);
+	esp_audio_resume(player);
+    //esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, audio_pos);	
 }
 
 audio_err_t joshvm_audio_stop_handler(void)
