@@ -105,7 +105,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
     if (REC_EVENT_WAKEUP_START == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_WAKEUP_START");
 			
-		javanotify_simplespeech_event(1, 0);
+		//javanotify_simplespeech_event(1, 0);
 		senddata = QUEUE_WAKEUP_START;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
 		if(pdPASS != xReturn)ESP_LOGE(TAG, "QUEUE_WAKEUP_START sended faild");
@@ -124,7 +124,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
     } else if (REC_EVENT_VAD_START == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_VAD_START");
 		
-		javanotify_simplespeech_event(1, 2);
+		//javanotify_simplespeech_event(1, 2);
 		voicedata_read_flag = 1;		
 		senddata = QUEUE_VAD_START;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
@@ -132,7 +132,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
 		
     } else if (REC_EVENT_VAD_STOP == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_VAD_STOP");
-		javanotify_simplespeech_event(1, 3);
+		//javanotify_simplespeech_event(1, 3);
 		voicedata_read_flag = 0;
 		senddata = QUEUE_VAD_STOP;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
@@ -141,7 +141,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
     } else if (REC_EVENT_WAKEUP_END == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_WAKEUP_END");
 		
-		javanotify_simplespeech_event(1, 1);
+		//javanotify_simplespeech_event(1, 1);
 		senddata = QUEUE_WAKEUP_END;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
 		if(pdPASS != xReturn)ESP_LOGE(TAG, "QUEUE_WAKEUP_END sended faild");		
@@ -555,7 +555,7 @@ void joshvm_app_init(void)
     disp_serv = audio_board_led_init();
 
 	app_wifi_service();
-
+/*
     rec_config_t eng = DEFAULT_REC_ENGINE_CONFIG();
     eng.vad_off_delay_ms = 800;
     eng.wakeup_time_ms = 2 * 1000;
@@ -570,8 +570,8 @@ void joshvm_app_init(void)
     eng.extension = NULL;
     eng.support_encoding = false;
     eng.user_data = NULL;
-	//rec_engine_create(&eng);
-
+	rec_engine_create(&eng);
+*/
 	Queue_vad_play = xQueueCreate(QUEUE_VAD_PLAY_LEN, QUEUE_VAD_PLAY_SIZE);
 	if(NULL == Queue_vad_play){
 		ESP_LOGE(TAG,"Queue_vad_play created failed");
@@ -585,9 +585,9 @@ void joshvm_app_init(void)
 	
 	while (1) {
 
-  		//JavaTask();
+  		JavaTask();
 		//JavaNativeTest();
-		test_esp32_media();
+		//test_esp32_media();
 		
 
 

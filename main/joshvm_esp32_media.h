@@ -37,6 +37,8 @@ typedef struct{
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
+	int positon;
+	int duration;
 	
 	
 }joshvm_media_mediaplayer_t;
@@ -48,7 +50,13 @@ typedef struct{
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
-	void *recorder;
+	//void *recorder;
+	struct{
+		void* i2s;
+		void* encoder;
+		void* stream_writer;
+		void* pipeline;
+	}recorder_t;
 	
 
 }joshvm_media_mediarecorder_t;
@@ -205,7 +213,7 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_release(void* handle);
+int joshvm_esp32_media_release(joshvm_media_t* handle);
 
 /**
  * @brief release 
@@ -213,7 +221,7 @@ int joshvm_esp32_media_release(void* handle);
  * @note 
  *
  * @param handle
- *		  state
+ *[out]	  state
  *    		- 1:stop
  *			  2:pause
  *			  3:playing/recording
@@ -229,7 +237,7 @@ int joshvm_esp32_media_release(void* handle);
 	JOSHVM_MEDIA_PLAYING = 3,
 	JOSHVM_MEDIA_RECORDING = 3
  }media_state_e;
-int joshvm_esp32_media_get_state(void* handle, int* state);
+int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state);
 
 /**
  * @brief read 
@@ -246,7 +254,7 @@ int joshvm_esp32_media_get_state(void* handle, int* state);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_read(void* handle, unsigned char* buffer, int size, int* bytesRead, void(*callback)(void*, int));
+int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesRead, void(*callback)(void*, int));
 
 /**
  * @brief  write
@@ -263,7 +271,7 @@ int joshvm_esp32_media_read(void* handle, unsigned char* buffer, int size, int* 
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_write(void* handle, unsigned char* buffer, int size, int* bytesWritten, void(*callback)(void*, int));
+int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesWritten, void(*callback)(void*, int));
 
 /**
  * @brief  clear buffer,keep the state of paused / stopped 
@@ -277,7 +285,7 @@ int joshvm_esp32_media_write(void* handle, unsigned char* buffer, int size, int*
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_flush(void* handle);
+int joshvm_esp32_media_flush(joshvm_media_t* handle);
 
 /**
  * @brief   
@@ -292,7 +300,7 @@ int joshvm_esp32_media_flush(void* handle);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_get_buffsize(void* handle, int* size);
+int joshvm_esp32_media_get_buffsize(joshvm_media_t* handle, int* size);
 
 /**
  * @brief   
@@ -340,7 +348,7 @@ int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_set_output_file(void* handle, char* file);
+int joshvm_esp32_media_set_output_file(joshvm_media_t* handle, char* file);
 
 /**
  * @brief   
@@ -355,7 +363,7 @@ int joshvm_esp32_media_set_output_file(void* handle, char* file);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_set_output_format(void* handle, int format);
+int joshvm_esp32_media_set_output_format(joshvm_media_t* handle, int format);
 
 /**
  * @brief   
@@ -370,7 +378,7 @@ int joshvm_esp32_media_set_output_format(void* handle, int format);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_get_position(void* handle, int* pos);
+int joshvm_esp32_media_get_position(joshvm_media_t* handle, int* pos);
 
 /**
  * @brief   
@@ -385,7 +393,7 @@ int joshvm_esp32_media_get_position(void* handle, int* pos);
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_set_position(void* handle, int pos, void(*callback)(void*, int));
+int joshvm_esp32_media_set_position(joshvm_media_t* handle, int pos, void(*callback)(void*, int));
 
 /**
  * @brief   
@@ -399,7 +407,7 @@ int joshvm_esp32_media_set_position(void* handle, int pos, void(*callback)(void*
  *     	-1: fail
  *		...
  */
-int joshvm_esp32_media_get_duration(void* handle, int* duration);
+int joshvm_esp32_media_get_duration(joshvm_media_t* handle, int* duration);
 
 int joshvm_esp32_media_get_max_volume(int* volume);
 int joshvm_esp32_media_get_volume(int* volume);

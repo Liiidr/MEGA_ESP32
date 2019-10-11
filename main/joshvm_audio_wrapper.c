@@ -77,11 +77,11 @@ static void esp_audio_state_task (void *para)
     while (1) {
         xQueueReceive(que, &esp_state, portMAX_DELAY);
         ESP_LOGI(TAG, "esp_auido status:%x,err:%x", esp_state.status, esp_state.err_msg);
-        if ((esp_state.status == AUDIO_STATUS_STOPED)
+        if ((esp_state.status == 3)//AUDIO_STATUS_STOPED)
             || (esp_state.status == AUDIO_STATUS_FINISHED)
             || (esp_state.status == AUDIO_STATUS_ERROR)) {
 
-			javanotify_simplespeech_event(2, 0);
+			//javanotify_simplespeech_event(2, 0);
 			joshvm_esp32_media_callback();
         }
     }
@@ -294,22 +294,24 @@ void joshvm_spiffs_audio_stop_handler(void)
 audio_err_t joshvm_audio_pause(void)
 {
 	int ret;
-	
-	esp_audio_pause(player);
+	ESP_LOGI(TAG, "Pause audio play");
 	esp_audio_pos_get(player, &audio_pos);
-    /*if((ret = esp_audio_stop(player, TERMINATION_TYPE_NOW)) == ESP_OK){
+	if((ret = esp_audio_pause(player)) == ESP_OK){
+    //if((ret = esp_audio_stop(player, TERMINATION_TYPE_NOW)) == ESP_OK){
 		return ret;
-	}*/
+	}
 	return ret = ESP_FAIL;
 }
 
-void joshvm_audio_resume_handler(const char *url)
+audio_err_t joshvm_audio_resume_handler(const char *url)
 {
-    //ESP_LOGI(TAG, "Resume audio, offset:%d url:%s", audio_info->offset, audio_info->url);
-    //player_pause = 0;
-    ESP_LOGI(TAG,"audio pos = %d*************",audio_pos);
-	esp_audio_resume(player);
+	int ret;
+    ESP_LOGI(TAG,"Resume pos :%d",audio_pos);
+	if((ret = esp_audio_resume(player)) == ESP_OK){
     //esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, audio_pos);	
+    	return ret;
+	}
+	return ESP_FAIL;
 }
 
 audio_err_t joshvm_audio_stop_handler(void)
@@ -328,11 +330,19 @@ int joshvm_audio_get_state()
 }
 
 
+audio_err_t joshvm_audio_time_get(int *time)
+{	
+	int ret;
+	ret = esp_audio_time_get(player,time);
+	ESP_LOGI(TAG,"get time position currently:%d",*time);
+	return ret;
+}
 
-audio_err_t joshvm_volume_get_handler(int volume)
+audio_err_t joshvm_volume_get_handler(int *volume)
 {
 	int ret;
-	 if((ret = 	esp_audio_vol_get(player, &volume)) == ESP_OK){
+	 if((ret = 	esp_audio_vol_get(player, volume)) == ESP_OK){
+	 	ESP_LOGI(TAG, "get volume: %d", *volume);
 		return ret = ESP_OK;
 	 }
 	 return ret = ESP_FAIL;
@@ -341,12 +351,15 @@ audio_err_t joshvm_volume_get_handler(int volume)
 audio_err_t joshvm_volume_set_handler(int volume)
 {
 	int ret;
-	 if((ret = 	esp_audio_vol_set(player, volume)) == ESP_OK){
-		return ret = ESP_OK;
-	 }
-	 return ret = ESP_FAIL;
+	if((volume >= 0) && (volume <= 100)){
+		 if((ret = 	esp_audio_vol_set(player, volume)) == ESP_OK){
+		 	ESP_LOGI(TAG, "set volume to %d", volume);
+			return ret = ESP_OK;
+		 }
+	}
+	ESP_LOGI(TAG, "volume: %d illegal", volume);
+	return ret = ESP_FAIL;
 }
-
 
 void joshvm_volume_adjust_handler(int volume)
 {
@@ -354,11 +367,13 @@ void joshvm_volume_adjust_handler(int volume)
     int vol = 0;
     esp_audio_vol_get(player, &vol);
     vol += volume;
+	if(vol > 100)vol = 100;
+	if(vol < 0)vol = 0;
+	
     int ret = esp_audio_vol_set(player, vol);
     if (ret == 0) {
-       	ESP_LOGI(TAG, "report volume_changed");
-        //duer_dcs_on_volume_changed();
-    }
+       	ESP_LOGI(TAG, "report volume_changed to %d",vol);
+    }	
 }
 
 

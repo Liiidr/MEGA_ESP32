@@ -21,11 +21,12 @@
 //---enum
 enum{
 	joshvm_meida_format_wav = 0,
-
+	joshvm_meida_format_amrnb,
+	joshvm_meida_format_amrwb,
+	joshvm_meida_format_opus
 }joshvm_meida_format_e;
 
-
-
+//---struct
 
 
 
@@ -45,7 +46,23 @@ enum{
  */
 int joshvm_meida_recorder_init(joshvm_media_t * handle);
 
-
+/**
+ * @brief get meida recorder state
+ *
+ * @note 
+ * @param 	
+ *			handle
+ *[out]	  state
+ *    		- 1:stop
+ *			  2:pause
+ *			  3:playing/recording
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
+int joshvm_media_recorde_get_state(joshvm_media_t* handle,int* state);
 
 
 
