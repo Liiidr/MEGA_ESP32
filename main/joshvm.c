@@ -580,8 +580,6 @@ void joshvm_app_init(void)
 	joshvm_cyclebuf_init(&voicebuff);
 	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);									
 	joshvm_audio_wrapper_init();
-
-	
 	
 	while (1) {
 
@@ -589,10 +587,6 @@ void joshvm_app_init(void)
 		//JavaNativeTest();
 		//test_esp32_media();
 		
-
-
-	
-
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);
 	        vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -602,7 +596,6 @@ void joshvm_app_init(void)
 	    esp_restart();	  
 	}
 }
-
 
 /**
  * JOSH VM interface

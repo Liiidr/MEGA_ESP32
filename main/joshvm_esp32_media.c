@@ -324,26 +324,29 @@ int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 	}
 	return ret;
 }
-/*
-joshvm_esp32_media_read(void* handle, unsigned char* buffer, int size, int* bytesRead, void(*callback)(void*, int))
+
+int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesRead, void(*callback)(void*, int))
 {
+	return 0;
+}
+
+int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesWritten, void(*callback)(void*, int))
+{
+	return 0;
 
 }
 
-joshvm_esp32_media_write(void* handle, unsigned char* buffer, int size, int* bytesWritten, void(*callback)(void*, int))
+int joshvm_esp32_media_flush(joshvm_media_t* handle)
 {
+	return 0;
+}
+
+int joshvm_esp32_media_get_buffsize(joshvm_media_t* handle, int* size)
+{
+	return 0;
 
 }
 
-int joshvm_esp32_media_flush(void* handle)
-{
-}
-
-int joshvm_esp32_media_get_buffsize(void* handle, int* size)
-{
-
-}
-*/
 int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t value)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_set_audio_sample_rate");
