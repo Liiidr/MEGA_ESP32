@@ -62,8 +62,29 @@ int joshvm_meida_recorder_init(joshvm_media_t * handle);
  *     	 -1: fail
  *		...
  */
-int joshvm_media_recorde_get_state(joshvm_media_t* handle,int* state);
+int joshvm_media_get_state(joshvm_media_t* handle,int* state);
 
+/**
+ * @brief init audio track
+ *
+ * @note 
+ * @param 	
+ *			handle
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
+int joshvm_audio_track_init(joshvm_media_t* handle);
+
+int joshvm_audio_recorder_init(joshvm_media_t* handle);
+
+void joshvm_media_recorder_release(joshvm_media_t* handle);
+
+void joshvm_audio_track_release(joshvm_media_t* handle);
+
+void joshvm_audio_rcorder_release(joshvm_media_t* handle);
 
 
 #endif

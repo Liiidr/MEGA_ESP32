@@ -23,51 +23,56 @@ typedef enum{
 }joshvm_type_t;
 
 
-
-typedef esp_err_t (*mediaplayer_start)(void **handle);
 typedef esp_err_t (*mediaplayer_callback)(void **handle,int);
-typedef esp_err_t (*mediarecorder_start)(void **handle);
-typedef esp_err_t (*audiotrack_start)(void **handle);
-typedef esp_err_t (*audiorecorder_start)(void **handle);
 
 typedef struct{
-	mediaplayer_start start;
 	char *url;						//dataSource
 	mediaplayer_callback callback;
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
 	int positon;
-	int duration;
-	
-	
+	int duration;	
 }joshvm_media_mediaplayer_t;
 
 typedef struct{
-	mediarecorder_start start;
 	int format;
 	char *url;	
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
-	//void *recorder;
+	//recorder_pipeline;
 	struct{
 		void* i2s;
+		void* filter;
 		void* encoder;
 		void* stream_writer;
 		void* pipeline;
 	}recorder_t;
-	
-
 }joshvm_media_mediarecorder_t;
 
 typedef struct{
-	audiotrack_start start;
-
+	uint32_t sample_rate;
+	uint8_t channel;
+	uint8_t	bit_rate;
+	//raw_pipeline
+	struct{
+		void* i2s;
+		void* raw_writer;
+		void* pipeline;
+	}audiotrack_t;
 }joshvm_media_audiotrack_t;
 
 typedef struct{
-	audiorecorder_start start;
+	uint32_t sample_rate;
+	uint8_t channel;
+	uint8_t	bit_rate;
+	//raw_pipeline
+	struct{
+		void* i2s;
+		void* raw_reader;
+		void* pipeline;
+	}audiorecorder_t;
 
 }joshvm_media_audiorecorder_t;
 

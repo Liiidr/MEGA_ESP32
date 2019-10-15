@@ -542,17 +542,17 @@ void joshvm_app_init(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
-
+/*
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     if (set != NULL) {
         esp_periph_set_register_callback(set, periph_callback, NULL);
     }
-
+*/
     //audio_board_key_init(set);
-    //dio_board_sdcard_init(set);
+    //audio_board_sdcard_init(set);
     app_sdcard_init();
-    disp_serv = audio_board_led_init();
+    //disp_serv = audio_board_led_init();
 
 	app_wifi_service();
 /*
@@ -578,9 +578,11 @@ void joshvm_app_init(void)
 	}
 	
 	joshvm_cyclebuf_init(&voicebuff);
-	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);									
+	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);	
+	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	joshvm_audio_wrapper_init();
-	
+	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+
 	while (1) {
 
   		JavaTask();

@@ -111,18 +111,18 @@ static void setup_player(void)
 
     esp_audio_cfg_t cfg = DEFAULT_ESP_AUDIO_CONFIG();
     audio_board_handle_t board_handle = audio_board_init();
-    cfg.vol_handle = board_handle->audio_hal;
+/*    cfg.vol_handle = board_handle->audio_hal;
     cfg.vol_set = (audio_volume_set)audio_hal_set_volume;
     cfg.vol_get = (audio_volume_get)audio_hal_get_volume;
     cfg.resample_rate = 48000;
     cfg.prefer_type = ESP_AUDIO_PREFER_MEM;
     cfg.evt_que = xQueueCreate(3, sizeof(esp_audio_state_t));
-    player = esp_audio_create(&cfg);
+    player = esp_audio_create(&cfg);*/
     audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
 	//extern xTaskHandle pvCreatedTask_player_task;
 	//esp_audio_state_task_stack = (StackType_t *) audio_calloc(1,ESP_AUDIO_STATE_TASK_SIZE);
-    xTaskCreate(esp_audio_state_task, "player_task", 2 * 1024, cfg.evt_que, 2, NULL);
+//    xTaskCreate(esp_audio_state_task, "player_task", 2 * 1024, cfg.evt_que, 2, NULL);
 	/*esp_audio_state_task_handler = xTaskCreateStaticPinnedToCore((TaskFunction_t) 		esp_audio_state_task,
 													(const char *)  		"esp_audio_state_task", 
 													(const uint32_t) 		ESP_AUDIO_STATE_TASK_SIZE, 
@@ -133,7 +133,7 @@ static void setup_player(void)
 													(BaseType_t) 			tskNO_AFFINITY);
 	*/
     // Create readers and add to esp_audio
-    fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
+/*    fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
     fs_reader.type = AUDIO_STREAM_READER;
 
     esp_audio_input_stream_add(player, fatfs_stream_init(&fs_reader));
@@ -175,7 +175,7 @@ static void setup_player(void)
     // Set default volume
     esp_audio_vol_set(player, 50);
     AUDIO_MEM_SHOW(TAG);
-    ESP_LOGI(TAG, "esp_audio instance is:%p", player);
+    ESP_LOGI(TAG, "esp_audio instance is:%p", player);*/
 }
 
 void joshvm_audio_wrapper_init(void)
