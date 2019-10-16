@@ -33,7 +33,7 @@ enum{
 //---fun
 
 /**
- * @brief init meida recorder 
+ * @brief init meida recorder ,cfg by default
  *
  * @note 
  * @param 	
@@ -45,6 +45,20 @@ enum{
  *		...
  */
 int joshvm_meida_recorder_init(joshvm_media_t * handle);
+
+/**
+ * @brief cfg meida recorder ,call by prepare
+ *
+ * @note 
+ * @param 	
+ *			handle
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
+int joshvm_meida_recorder_cfg(joshvm_media_t *handle);
 
 /**
  * @brief get meida recorder state

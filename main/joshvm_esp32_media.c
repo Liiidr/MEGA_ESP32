@@ -11,11 +11,7 @@
 
 //---define
 #define TAG  "-----------JOSHVM_ESP32_MEDIA-----------"
-#define MEDIA_RECORDER_FORMAT 		joshvm_meida_format_wav
-#define MEDIA_RECORDER_URL			"file://sdcard/media01.wav"
-#define MEDIA_RECORDER_SAMPLE_RATE	48000
-#define MEDIA_RECORDER_CHANNEL		I2S_CHANNEL_FMT_ALL_RIGHT
-#define MEDIA_RECORDER_BIT_RATE		16
+
 
 //---variable
 static int8_t audio_status = 0;
@@ -25,12 +21,12 @@ static struct{
 	int sample_rate;
 	int channel;
 	int bit_rate;
-}joshvm_meida_recorder_default_cfg = {joshvm_meida_format_wav,"/sdcard/default0.wav",16000,I2S_CHANNEL_FMT_ONLY_LEFT,16};
+}joshvm_meida_recorder_default_cfg = {joshvm_meida_format_wav,"/sdcard/default.wav",16000,1,16};
 
 static joshvm_media_t *joshvm_media = NULL;
 
 //------------------test-------------------
-void *handle_player_test;
+void *handle_player_test = NULL;
 
 #define MP3_URI_TEST "file://sdcard/48000.wav"
 
@@ -54,7 +50,7 @@ void joshvm_esp32_media_callback()
 int joshvm_esp32_media_create(int type, void** handle)
 {
 	printf("------------------------------------------\r\n");
-	printf("------*MEGA_ESP32 Version beat-v1.0*------\r\n");
+	printf("------*MEGA_ESP32 Version bate_v1.3*------\r\n");
 	printf("------------------------------------------\r\n");
 
 	ESP_LOGI(TAG,"joshvm_esp32_media_create");
@@ -70,7 +66,8 @@ int joshvm_esp32_media_create(int type, void** handle)
 			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.url = joshvm_meida_recorder_default_cfg.url;
 			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.sample_rate = joshvm_meida_recorder_default_cfg.sample_rate;
 			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.channel = joshvm_meida_recorder_default_cfg.channel;
-			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = joshvm_meida_recorder_default_cfg.bit_rate;			
+			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = joshvm_meida_recorder_default_cfg.bit_rate;	
+			joshvm_meida_recorder_init(joshvm_media);
 			break;
 		case AUDIO_TRACK:
 			ret = joshvm_audio_track_init(joshvm_media);
@@ -109,7 +106,7 @@ int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, in
 			break;
 		case MEDIA_RECORDER:	
 			ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-			joshvm_meida_recorder_init(handle);
+			joshvm_meida_recorder_cfg(handle);
 
 			break;
 		/*case AUDIO_TRACK:
@@ -257,11 +254,9 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle)
 int joshvm_esp32_media_release(joshvm_media_t* handle)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_release");
-
 	switch(handle->media_type)
 	{
 		case MEDIA_PLAYER:
-
 			break;
 		case MEDIA_RECORDER:
 			joshvm_media_recorder_release(handle);
@@ -276,11 +271,11 @@ int joshvm_esp32_media_release(joshvm_media_t* handle)
 			break;
 	}
 
-	audio_free(handle);
-	if(handle == NULL){
-		return JOSHVM_OK;
+	if(handle){
+		audio_free(handle);		
+		handle = NULL;
 	}
-	return JOSHVM_FAIL;
+	return JOSHVM_OK;
 }
 
 int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
@@ -595,18 +590,22 @@ void test_esp32_media(void)
 
 	joshvm_esp32_media_create(1,&handle_player_test);
 	//joshvm_esp32_media_set_source(handle_player_test,MP3_URI_TEST);
+	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
+	vTaskDelay(10000 / portTICK_PERIOD_MS);
+	joshvm_esp32_media_stop(handle_player_test);
+	vTaskDelay(1000 / portTICK_PERIOD_MS); 
+
+	joshvm_esp32_media_set_output_file(handle_player_test,"/sdcard/default9.wav");
+	joshvm_esp32_media_set_audio_sample_rate(handle_player_test,16000);
+	joshvm_esp32_media_set_channel_config(handle_player_test,1);
 	joshvm_esp32_media_prepare(handle_player_test,NULL);
 	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
 
-	vTaskDelay(10000 / portTICK_PERIOD_MS);	
-
-	//joshvm_esp32_media_pause(handle_player_test);
-
-	//vTaskDelay(5000 / portTICK_PERIOD_MS);	
-
-	//joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
+	vTaskDelay(10000 / portTICK_PERIOD_MS); 
 
 	joshvm_esp32_media_stop(handle_player_test);
+	
+	joshvm_esp32_media_release(handle_player_test);
 	
 }
 
