@@ -25,6 +25,7 @@
 #ifndef JOSHVM_AUDIO_WRAPPER_H
 #define JOSHVM_AUDIO_WRAPPER_H
 
+
 //#include "lightduer_dcs.h"
 //typedef  int duer_audio_play_type_t;
 /*
@@ -40,6 +41,10 @@ typedef enum {
  *
  */
 void joshvm_audio_wrapper_init(void);
+
+void joshvm_audio_player_destroy();
+
+
 
 /**
  * DESC:

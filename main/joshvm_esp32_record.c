@@ -161,9 +161,9 @@ static audio_element_handle_t create_fatfs_stream(int sample_rates, int bits, in
 	printf("fatfs_info %d  %d  %d\r\n ",writer_info.sample_rates,writer_info.channels,writer_info.bits);
     return fatfs_stream;
 }
-
+ 
 int joshvm_meida_recorder_init(joshvm_media_t  * handle)
-{	
+{	 
     ESP_LOGI(TAG, "joshvm_meida_recorder_init");
 
     audio_pipeline_handle_t recorder = NULL;
@@ -193,7 +193,7 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	}else if(joshvm_meida_format_opus == handle->joshvm_media_u.joshvm_media_mediarecorder.format){
 		audio_element_handle_t opus_encoder = create_opus_encoder();
 		audio_pipeline_register(recorder, opus_encoder, "encode");
-		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = opus_encoder;
+		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = opus_encoder; 
 	}
 
 	//---create fatfs element
@@ -204,7 +204,7 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	audio_pipeline_register(recorder, fatfs_writer, "fatfs");
     audio_pipeline_link(recorder, (const char *[]) {"i2s","resample","encode","fatfs"}, 4);
 	audio_element_set_uri(fatfs_writer,handle->joshvm_media_u.joshvm_media_mediarecorder.url);
-	ESP_LOGI(TAG,"set url:%s",handle->joshvm_media_u.joshvm_media_mediarecorder.url);	
+	ESP_LOGI(TAG,"Set default url:%s",handle->joshvm_media_u.joshvm_media_mediarecorder.url);	
     ESP_LOGI(TAG, "Recorder has been created");
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.i2s = i2s_stream_reader;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.filter = filter;

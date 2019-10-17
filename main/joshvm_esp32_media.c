@@ -50,7 +50,7 @@ void joshvm_esp32_media_callback()
 int joshvm_esp32_media_create(int type, void** handle)
 {
 	printf("------------------------------------------\r\n");
-	printf("------*MEGA_ESP32 Version bate_v1.3*------\r\n");
+	printf("------*MEGA_ESP32 Version bate_v1.4*------\r\n");
 	printf("------------------------------------------\r\n");
 
 	ESP_LOGI(TAG,"joshvm_esp32_media_create");
@@ -59,7 +59,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	joshvm_media->media_type = type;
 	switch(type){
 		case MEDIA_PLAYER: 	
-			
+			joshvm_audio_wrapper_init();
 			break;
 		case MEDIA_RECORDER: 	
 			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.format = joshvm_meida_recorder_default_cfg.format;
@@ -113,7 +113,7 @@ int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, in
 			break;
 		case AUDIO_RECORDER:
 			break;*/
-		default :
+		default : 
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
 	}
@@ -257,6 +257,7 @@ int joshvm_esp32_media_release(joshvm_media_t* handle)
 	switch(handle->media_type)
 	{
 		case MEDIA_PLAYER:
+			joshvm_audio_player_destroy();
 			break;
 		case MEDIA_RECORDER:
 			joshvm_media_recorder_release(handle);

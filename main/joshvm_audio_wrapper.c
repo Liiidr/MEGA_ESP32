@@ -61,6 +61,7 @@ static TaskHandle_t	esp_audio_state_task_handler;
 static StackType_t * joshvm_audio_state_task_stack = NULL;
 static StaticTask_t joshvm_audio_state_task_TCB;
 static TaskHandle_t	joshvm_audio_state_task_handler;*/
+static TaskHandle_t esp_audio_state_task_handler = NULL;
 static audio_pipeline_handle_t pipeline;
 static audio_element_handle_t i2s_stream,spiffs_stream,mp3_decoder,filter;
 static int audio_pos = 0;
@@ -83,7 +84,7 @@ static void esp_audio_state_task (void *para)
 
 			//javanotify_simplespeech_event(2, 0);
 			joshvm_esp32_media_callback();
-        }
+        } 
     }
     vTaskDelete(NULL);
 }
@@ -110,19 +111,19 @@ static void setup_player(void)
     }
 
     esp_audio_cfg_t cfg = DEFAULT_ESP_AUDIO_CONFIG();
-    audio_board_handle_t board_handle = audio_board_init();
-/*    cfg.vol_handle = board_handle->audio_hal;
-    cfg.vol_set = (audio_volume_set)audio_hal_set_volume;
-    cfg.vol_get = (audio_volume_get)audio_hal_get_volume;
+    //audio_board_handle_t board_handle = audio_board_init();
+    //cfg.vol_handle = board_handle->audio_hal;
+    //cfg.vol_set = (audio_volume_set)audio_hal_set_volume;
+    //cfg.vol_get = (audio_volume_get)audio_hal_get_volume;
     cfg.resample_rate = 48000;
     cfg.prefer_type = ESP_AUDIO_PREFER_MEM;
     cfg.evt_que = xQueueCreate(3, sizeof(esp_audio_state_t));
-    player = esp_audio_create(&cfg);*/
-    audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+    player = esp_audio_create(&cfg);
+    //audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
 	//extern xTaskHandle pvCreatedTask_player_task;
 	//esp_audio_state_task_stack = (StackType_t *) audio_calloc(1,ESP_AUDIO_STATE_TASK_SIZE);
-//    xTaskCreate(esp_audio_state_task, "player_task", 2 * 1024, cfg.evt_que, 2, NULL);
+    xTaskCreate(esp_audio_state_task, "player_task", 2 * 1024, cfg.evt_que, 2, &esp_audio_state_task_handler);
 	/*esp_audio_state_task_handler = xTaskCreateStaticPinnedToCore((TaskFunction_t) 		esp_audio_state_task,
 													(const char *)  		"esp_audio_state_task", 
 													(const uint32_t) 		ESP_AUDIO_STATE_TASK_SIZE, 
@@ -133,22 +134,20 @@ static void setup_player(void)
 													(BaseType_t) 			tskNO_AFFINITY);
 	*/
     // Create readers and add to esp_audio
-/*    fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
+    fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
     fs_reader.type = AUDIO_STREAM_READER;
-
     esp_audio_input_stream_add(player, fatfs_stream_init(&fs_reader));
+	
     http_stream_cfg_t http_cfg = HTTP_STREAM_CFG_DEFAULT();
     http_cfg.event_handle = _http_stream_event_handle;
     http_cfg.type = AUDIO_STREAM_READER;
     http_cfg.enable_playlist_parser = true;
-    audio_element_handle_t http_stream_reader = http_stream_init(&http_cfg);
-    esp_audio_input_stream_add(player, http_stream_reader);
+    esp_audio_input_stream_add(player, http_stream_init(&http_cfg));
 
     // Create writers and add to esp_audio
     i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
     i2s_writer.i2s_config.sample_rate = 48000;
     i2s_writer.type = AUDIO_STREAM_WRITER;
-
     esp_audio_output_stream_add(player, i2s_stream_init(&i2s_writer));
 
     // Add decoders and encoders to esp_audio
@@ -175,13 +174,19 @@ static void setup_player(void)
     // Set default volume
     esp_audio_vol_set(player, 50);
     AUDIO_MEM_SHOW(TAG);
-    ESP_LOGI(TAG, "esp_audio instance is:%p", player);*/
+    ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
 
-void joshvm_audio_wrapper_init(void)
+void joshvm_audio_wrapper_init()
 {
     setup_player();
 	joshvm_spiffs_audio_play_init();
+}
+
+void joshvm_audio_player_destroy()
+{
+	esp_audio_destroy(player);
+	vTaskDelete( esp_audio_state_task_handler);
 }
 
 int joshvm_audio_play_handler(const char *url)

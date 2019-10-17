@@ -542,6 +542,10 @@ void joshvm_app_init(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
+    audio_board_handle_t board_handle = audio_board_init();
+	audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+
+	
 /*
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
     esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
@@ -565,7 +569,7 @@ void joshvm_app_init(void)
 #else
     eng.open = recorder_pipeline_open;
 #endif
-    eng.close = recorder_pipeline_close;
+    eng.close = recorder_pipeline_close; 
     eng.fetch = recorder_pipeline_read;
     eng.extension = NULL;
     eng.support_encoding = false;
@@ -580,7 +584,8 @@ void joshvm_app_init(void)
 	joshvm_cyclebuf_init(&voicebuff);
 	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);	
 	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-	joshvm_audio_wrapper_init();
+	
+	//joshvm_audio_wrapper_init();
 	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 
 	while (1) {
