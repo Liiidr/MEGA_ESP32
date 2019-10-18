@@ -12,9 +12,10 @@
 #include "amrwb_encoder.h"
 #include "opus_encoder.h"
 #include "esp_log.h"
+#include "joshvm_esp32_raw_buff.h"
 
 //---define
-#define TAG  "------JSOHVM_ESP32_RECORDER--------"
+#define TAG  "JSOHVM_ESP32_RECORDER>>>"
 //---creater cfg
 #define RECORD_RATE         16000
 #define RECORD_CHANNEL      2
@@ -29,11 +30,19 @@
 #define PLAYBACK_BITS       16
 
 //---element cfg
-#define RECORDER_CFG_FORMAT	handle->joshvm_media_u.joshvm_media_mediarecorder.format
-#define RECORDER_CFG_URL	handle->joshvm_media_u.joshvm_media_mediarecorder.url
-#define RECORDER_CFG_SAMPLE_RATE handle->joshvm_media_u.joshvm_media_mediarecorder.sample_rate
-#define RECORDER_CFG_CHANNEL handle->joshvm_media_u.joshvm_media_mediarecorder.channel
-#define RECORDER_CFG_BITS	handle->joshvm_media_u.joshvm_media_mediarecorder.bit_rate
+#define M_REC_CFG_FORMAT	handle->joshvm_media_u.joshvm_media_mediarecorder.format
+#define M_REC_CFG_URL		handle->joshvm_media_u.joshvm_media_mediarecorder.url
+#define M_REC_CFG_SAMPLE_RATE handle->joshvm_media_u.joshvm_media_mediarecorder.sample_rate
+#define M_REC_CFG_CHANNEL 	handle->joshvm_media_u.joshvm_media_mediarecorder.channel
+#define M_REC_CFG_BITS		handle->joshvm_media_u.joshvm_media_mediarecorder.bit_rate
+
+#define A_REC_CFG_SAMPLE_RATE handle->joshvm_media_u.joshvm_media_audiorecorder.sample_rate
+#define A_REC_CFG_CHANNEL 	handle->joshvm_media_u.joshvm_media_audiorecorder.channel
+#define A_REC_CFG_BITS		handle->joshvm_media_u.joshvm_media_audiorecorder.bit_rate
+
+
+
+
 
 typedef struct rsp_filter {
     resample_info_t *resample_info;
@@ -217,23 +226,23 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 {
 	ESP_LOGI(TAG, "joshvm_meida_recorder_cfg");
 	//---filter_destination cfg
-	rsp_filter_set_dest_info(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.filter,RECORDER_CFG_SAMPLE_RATE,RECORDER_CFG_CHANNEL);
+	rsp_filter_set_dest_info(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.filter,M_REC_CFG_SAMPLE_RATE,M_REC_CFG_CHANNEL);
 	
 	//---encoder cfg 
 	audio_element_info_t wav_info = {0};
 	audio_element_getinfo(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder, &wav_info);
-	wav_info.sample_rates = RECORDER_CFG_SAMPLE_RATE;
-	wav_info.channels = RECORDER_CFG_CHANNEL;
-	wav_info.bits = RECORDER_CFG_BITS;
+	wav_info.sample_rates = M_REC_CFG_SAMPLE_RATE;
+	wav_info.channels = M_REC_CFG_CHANNEL;
+	wav_info.bits = M_REC_CFG_BITS;
 	audio_element_setinfo(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder, &wav_info);		
 	ESP_LOGI(TAG,"Prepare encoder_info %d  %d  %d",wav_info.sample_rates,wav_info.channels,wav_info.bits);
 
 	//---fatfs cfg
 	audio_element_info_t writer_info = {0};
     audio_element_getinfo(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer, &writer_info);
-    writer_info.bits = RECORDER_CFG_BITS;
-    writer_info.channels = RECORDER_CFG_CHANNEL;
-    writer_info.sample_rates = RECORDER_CFG_SAMPLE_RATE;
+    writer_info.bits = M_REC_CFG_BITS;
+    writer_info.channels = M_REC_CFG_CHANNEL;
+    writer_info.sample_rates = M_REC_CFG_SAMPLE_RATE;
     audio_element_setinfo(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer, &writer_info);	
 	ESP_LOGI(TAG,"Prepare fatfs_info %d  %d  %d",writer_info.sample_rates,writer_info.channels,writer_info.bits);
 	int ret = audio_element_set_uri(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer,\
@@ -260,7 +269,7 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s);
 			break;
 		case AUDIO_RECORDER:
-
+			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s);
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -331,43 +340,52 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 int joshvm_audio_recorder_init(joshvm_media_t* handle)
 {	
     ESP_LOGI(TAG, "joshvm_audio_recorder_init");
-/*
+
 	int ret;
-	audio_element_handle_t i2s_stream_reader = NULL;
 	audio_element_handle_t raw_reader = NULL;
-    audio_pipeline_handle_t audiorecorder = NULL;
+    audio_pipeline_handle_t audio_recorder = NULL;
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
-    audiorecorder = audio_pipeline_init(&pipeline_cfg);
-    if (NULL == audiorecorder) {
+    audio_recorder = audio_pipeline_init(&pipeline_cfg);
+    if (NULL == audio_recorder) {
         return JOSHVM_FAIL;
     }	
 	//---create i2s element
-    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
-    i2s_cfg.i2s_port = 1;
-    i2s_cfg.i2s_config.use_apll = 0;
-    i2s_cfg.i2s_config.sample_rate = handle->joshvm_media_u.joshvm_media_audiorecorder.sample_rate;
-    i2s_cfg.i2s_config.channel_format =  handle->joshvm_media_u.joshvm_media_audiorecorder.channel;//I2S_CHANNEL_FMT_ONLY_LEFT;
-    i2s_cfg.i2s_config.bits_per_sample = handle->joshvm_media_u.joshvm_media_audiorecorder.bit_rate;
-    i2s_cfg.type = AUDIO_STREAM_READER;
-    i2s_stream_reader = i2s_stream_init(&i2s_cfg);
-
+	audio_element_handle_t i2s_stream_reader = create_i2s_stream(A_REC_CFG_SAMPLE_RATE,A_REC_CFG_BITS,A_REC_CFG_CHANNEL,AUDIO_STREAM_READER);
+	//---create raw element
 	raw_stream_cfg_t raw_cfg = RAW_STREAM_CFG_DEFAULT();
     raw_cfg.type = AUDIO_STREAM_READER;
     raw_reader = raw_stream_init(&raw_cfg);
 
-    audio_pipeline_register(audiorecorder, i2s_stream_reader, "i2s");
-    audio_pipeline_register(audiorecorder, raw_reader, "raw");
-    audio_pipeline_link(audiorecorder, (const char *[]) {"i2s", "raw"}, 2);
+    audio_pipeline_register(audio_recorder, i2s_stream_reader, "i2s");
+    audio_pipeline_register(audio_recorder, raw_reader, "raw");
+    audio_pipeline_link(audio_recorder, (const char *[]) {"i2s", "raw"}, 2);
 	
     ESP_LOGI(TAG, "Recorder has been created");
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s = i2s_stream_reader;	
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader = raw_reader;
-	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline = audiorecorder;
-	*/
+	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline = audio_recorder;	
 
     return JOSHVM_OK;
 }
 
+//16000/1000*30ms
+#define VOICEBUFF_SIZE 480
+void joshvm_audio_recorder_task(void* handle)
+{
+	ring_buffer_t audio_recorder_rb;
+	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
+	audio_element_handle_t raw_rec = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader;
+
+	ring_buffer_init(&audio_recorder_rb,16*1000);
+	while(1){	
+		raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+		ring_buffer_write(voicebuff,VOICEBUFF_SIZE * sizeof(short),&audio_recorder_rb);
+		printf("valid_size = %d\n",audio_recorder_rb.valid_size);
+
+	}
+	audio_free(voicebuff);
+	ring_buffer_deinit(&audio_recorder_rb);	
+}
 
 void joshvm_media_recorder_release(joshvm_media_t* handle)
 {

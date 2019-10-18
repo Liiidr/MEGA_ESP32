@@ -94,6 +94,9 @@ int joshvm_audio_track_init(joshvm_media_t* handle);
 
 int joshvm_audio_recorder_init(joshvm_media_t* handle);
 
+void joshvm_audio_recorder_task(void* handle);
+
+
 void joshvm_media_recorder_release(joshvm_media_t* handle);
 
 void joshvm_audio_track_release(joshvm_media_t* handle);

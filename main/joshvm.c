@@ -559,7 +559,7 @@ void joshvm_app_init(void)
     //disp_serv = audio_board_led_init();
 
 	app_wifi_service();
-/*
+
     rec_config_t eng = DEFAULT_REC_ENGINE_CONFIG();
     eng.vad_off_delay_ms = 800;
     eng.wakeup_time_ms = 2 * 1000;
@@ -575,7 +575,7 @@ void joshvm_app_init(void)
     eng.support_encoding = false;
     eng.user_data = NULL;
 	rec_engine_create(&eng);
-*/
+
 	Queue_vad_play = xQueueCreate(QUEUE_VAD_PLAY_LEN, QUEUE_VAD_PLAY_SIZE);
 	if(NULL == Queue_vad_play){
 		ESP_LOGE(TAG,"Queue_vad_play created failed");
@@ -583,10 +583,9 @@ void joshvm_app_init(void)
 	
 	joshvm_cyclebuf_init(&voicebuff);
 	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);	
-	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	
 	//joshvm_audio_wrapper_init();
-	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+	//ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 
 	while (1) {
 

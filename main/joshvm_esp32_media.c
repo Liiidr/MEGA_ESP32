@@ -10,7 +10,7 @@
 #include "string.h"
 
 //---define
-#define TAG  "-----------JOSHVM_ESP32_MEDIA-----------"
+#define TAG  "JOSHVM_ESP32_MEDIA>>>"
 
 
 //---variable
@@ -21,9 +21,18 @@ static struct{
 	int sample_rate;
 	int channel;
 	int bit_rate;
-}joshvm_meida_recorder_default_cfg = {joshvm_meida_format_wav,"/sdcard/default.wav",16000,1,16};
+}j_meida_rec_default_cfg = {joshvm_meida_format_wav,"/sdcard/default.wav",16000,1,16};
+
+static struct{
+	int sample_rate;
+	int channel;
+	int bit_rate;
+}j_audio_rec_default_cfg = {16000,1,16};
+
 
 static joshvm_media_t *joshvm_media = NULL;
+static TaskHandle_t audio_recorder_handler = NULL;
+
 
 //------------------test-------------------
 void *handle_player_test = NULL;
@@ -49,9 +58,9 @@ void joshvm_esp32_media_callback()
 
 int joshvm_esp32_media_create(int type, void** handle)
 {
-	printf("------------------------------------------\r\n");
-	printf("------*MEGA_ESP32 Version bate_v1.4*------\r\n");
-	printf("------------------------------------------\r\n");
+	printf(">>>-----------------------------------<<<\r\n");
+	printf("--->>>MEGA_ESP32 Version beta_v1.5*<<<---\r\n");
+	printf(">>>-----------------------------------<<<\r\n");
 
 	ESP_LOGI(TAG,"joshvm_esp32_media_create");
 	int ret = JOSHVM_OK;
@@ -62,17 +71,20 @@ int joshvm_esp32_media_create(int type, void** handle)
 			joshvm_audio_wrapper_init();
 			break;
 		case MEDIA_RECORDER: 	
-			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.format = joshvm_meida_recorder_default_cfg.format;
-			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.url = joshvm_meida_recorder_default_cfg.url;
-			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.sample_rate = joshvm_meida_recorder_default_cfg.sample_rate;
-			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.channel = joshvm_meida_recorder_default_cfg.channel;
-			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = joshvm_meida_recorder_default_cfg.bit_rate;	
-			joshvm_meida_recorder_init(joshvm_media);
+			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.format = j_meida_rec_default_cfg.format;
+			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.url = j_meida_rec_default_cfg.url;
+			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
+			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.channel = j_meida_rec_default_cfg.channel;
+			joshvm_media->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
+			ret = joshvm_meida_recorder_init(joshvm_media);
 			break;
 		case AUDIO_TRACK:
 			ret = joshvm_audio_track_init(joshvm_media);
 			break;
 		case AUDIO_RECORDER:
+			joshvm_media->joshvm_media_u.joshvm_media_audiorecorder.sample_rate = j_audio_rec_default_cfg.sample_rate;
+			joshvm_media->joshvm_media_u.joshvm_media_audiorecorder.channel = j_audio_rec_default_cfg.channel;
+			joshvm_media->joshvm_media_u.joshvm_media_audiorecorder.bit_rate = j_audio_rec_default_cfg.bit_rate;
 			ret = joshvm_audio_recorder_init(joshvm_media);
 			break;
 		default :
@@ -142,7 +154,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				break;
 			case AUDIO_RECORDER:
 				ret = audio_pipeline_run(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline);
-				
+				xTaskCreate(joshvm_audio_recorder_task, "joshvm_audio_recorder_task", 2 * 1024, (void*)handle, 2, &audio_recorder_handler);
 				break;
 			default :
 				ret = JOSHVM_NOT_SUPPORTED;
@@ -215,7 +227,8 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 		case AUDIO_TRACK:			
 			ret = audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
 			break;
-		case AUDIO_RECORDER:			
+		case AUDIO_RECORDER:
+			vTaskDelete(audio_recorder_handler);
 			ret = audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline);
 			break;
 		default :
@@ -237,11 +250,11 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle)
 			ret = JOSHVM_OK;
 			break;
 		case MEDIA_RECORDER:
-			handle->joshvm_media_u.joshvm_media_mediarecorder.format = joshvm_meida_recorder_default_cfg.format;
-			handle->joshvm_media_u.joshvm_media_mediarecorder.url = joshvm_meida_recorder_default_cfg.url;
-			handle->joshvm_media_u.joshvm_media_mediarecorder.sample_rate = joshvm_meida_recorder_default_cfg.sample_rate;
-			handle->joshvm_media_u.joshvm_media_mediarecorder.channel = joshvm_meida_recorder_default_cfg.channel;
-			handle->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = joshvm_meida_recorder_default_cfg.bit_rate;	
+			handle->joshvm_media_u.joshvm_media_mediarecorder.format = j_meida_rec_default_cfg.format;
+			handle->joshvm_media_u.joshvm_media_mediarecorder.url = j_meida_rec_default_cfg.url;
+			handle->joshvm_media_u.joshvm_media_mediarecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
+			handle->joshvm_media_u.joshvm_media_mediarecorder.channel = j_meida_rec_default_cfg.channel;
+			handle->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -315,7 +328,7 @@ int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
-
+			joshvm_media_get_state(handle,state);
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -327,6 +340,7 @@ int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 
 int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesRead, void(*callback)(void*, int))
 {
+
 	return 0;
 }
 
@@ -589,8 +603,13 @@ int joshvm_esp32_media_sub_volume()
 void test_esp32_media(void)
 {	
 
-	joshvm_esp32_media_create(1,&handle_player_test);
-	//joshvm_esp32_media_set_source(handle_player_test,MP3_URI_TEST);
+	joshvm_esp32_media_create(3,&handle_player_test);
+
+	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
+	vTaskDelay(10000 / portTICK_PERIOD_MS); 
+	joshvm_esp32_media_stop(handle_player_test);
+	
+/*	//joshvm_esp32_media_set_source(handle_player_test,MP3_URI_TEST);
 	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
 	vTaskDelay(10000 / portTICK_PERIOD_MS);
 	joshvm_esp32_media_stop(handle_player_test);
@@ -607,7 +626,7 @@ void test_esp32_media(void)
 	joshvm_esp32_media_stop(handle_player_test);
 	
 	joshvm_esp32_media_release(handle_player_test);
-	
+	*/
 }
 
 
