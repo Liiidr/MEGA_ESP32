@@ -589,8 +589,8 @@ void joshvm_app_init(void)
 
 	while (1) {
 
-  		JavaTask();
-		//JavaNativeTest();
+  		//JavaTask();
+		JavaNativeTest();
 		//test_esp32_media();
 		
 		for (int i = 10; i >= 0; i--) {
