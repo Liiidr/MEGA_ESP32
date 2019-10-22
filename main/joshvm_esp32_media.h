@@ -1,8 +1,16 @@
 #ifndef _JOSHVM_ESP32_MEDIA_H_
 #define _JOSHVM_ESP32_MEDIA_H_
 
+#include "joshvm_esp32_raw_buff.h"
+
+//---define
+#define QUE_TRACK_START 1
+#define QUE_RECORD_STOP 2
 
 
+
+
+//---enum
 typedef enum{
 	JOSHVM_OK 				= 0,
 	JOSHVM_FAIL 			= -1,
@@ -22,7 +30,7 @@ typedef enum{
 	AUDIO_RECORDER
 }joshvm_type_t;
 
-
+//---
 typedef esp_err_t (*mediaplayer_callback)(void **handle,int);
 
 typedef struct{
@@ -58,9 +66,13 @@ typedef struct{
 	//raw_pipeline
 	struct{
 		void* i2s;
+		void* filter;
 		void* raw_writer;
 		void* pipeline;
 	}audiotrack_t;
+
+	ring_buffer_t *track_rb;
+	void(*callback)(void*, int);
 }joshvm_media_audiotrack_t;
 
 typedef struct{
@@ -70,16 +82,19 @@ typedef struct{
 	//raw_pipeline
 	struct{
 		void* i2s;
+		void* filter;
 		void* raw_reader;
 		void* pipeline;
 	}audiorecorder_t;
 
+	ring_buffer_t *rec_rb;
 }joshvm_media_audiorecorder_t;
 
 
 
 typedef struct {
 	uint8_t media_type;
+	QueueHandle_t	evt_que;
 
 	union{
 		joshvm_media_mediaplayer_t joshvm_media_mediaplayer;

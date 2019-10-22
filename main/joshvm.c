@@ -113,7 +113,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
 		ESP_LOGE(TAG,"REC_EVENT_WAKEUP_START heap free size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 
 		//esp32_playback_voice(4);
-		test_esp32_media();
+		//test_esp32_media();
 
 		//display_service_set_pattern(disp_serv, DISPLAY_PATTERN_TURN_ON, 0);
 
@@ -542,9 +542,6 @@ void joshvm_app_init(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
-    audio_board_handle_t board_handle = audio_board_init();
-	audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-
 	
 /*
     esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
@@ -560,6 +557,11 @@ void joshvm_app_init(void)
 
 	app_wifi_service();
 
+	audio_board_handle_t board_handle = audio_board_init();
+	printf("----------------1---------------\n");
+	audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+	printf("----------------2---------------\n");
+/*
     rec_config_t eng = DEFAULT_REC_ENGINE_CONFIG();
     eng.vad_off_delay_ms = 800;
     eng.wakeup_time_ms = 2 * 1000;
@@ -575,14 +577,14 @@ void joshvm_app_init(void)
     eng.support_encoding = false;
     eng.user_data = NULL;
 	rec_engine_create(&eng);
-
+*/
 	Queue_vad_play = xQueueCreate(QUEUE_VAD_PLAY_LEN, QUEUE_VAD_PLAY_SIZE);
 	if(NULL == Queue_vad_play){
 		ESP_LOGE(TAG,"Queue_vad_play created failed");
 	}
 	
 	joshvm_cyclebuf_init(&voicebuff);
-	xTaskCreate(vad_task, "vad_task", 4096, NULL, 3,NULL);	
+	//xTaskCreate(vad_task, "vad_task", 4096, NULL, VAD_TASK_PRI,NULL);	
 	
 	//joshvm_audio_wrapper_init();
 	//ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
@@ -590,8 +592,8 @@ void joshvm_app_init(void)
 	while (1) {
 
   		//JavaTask();
-		JavaNativeTest();
-		//test_esp32_media();
+		//JavaNativeTest();
+		test_esp32_media();
 		
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);

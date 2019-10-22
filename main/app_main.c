@@ -40,8 +40,6 @@ static const char *TAG = "APP_MAIN";
 
 void app_main(void)
 {
-	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-	
 	esp_err_t err = nvs_flash_init();
     if (err == ESP_ERR_NVS_NO_FREE_PAGES) {
         // NVS partition was truncated and needs to be erased
@@ -51,6 +49,7 @@ void app_main(void)
     }
     tcpip_adapter_init();
 	joshvm_app_init();
+	
 /*//---------test begin
 	ring_buffer_t ring_buffer;
 	int8_t buf1[13] = {1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd};

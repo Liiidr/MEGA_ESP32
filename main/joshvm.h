@@ -35,6 +35,12 @@ typedef enum
 }rec_ecb_event_type_t;
 
 #define JOSHVM_CYCLEBUF_BUFFER_SIZE (REC_ONE_BLOCK_SIZE * 60)
+#define VAD_TASK_PRI					3
+#define ESP_AUDIO_STATE_TASK_PRI		2
+#define JOSHVM_AUDIO_STATE_TASK_PRI		1
+#define	JOSHVM_AUDIO_TRACK_TASK_PRI		1
+#define	JOSHVM_AUDIO_RECORDER_TASK_PRI	1
+
 typedef struct _cyclebuf {
 	unsigned char* buffer;
 	unsigned char* read_pointer;

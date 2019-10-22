@@ -92,9 +92,14 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state);
  */
 int joshvm_audio_track_init(joshvm_media_t* handle);
 
+void joshvm_audio_track_task(void* handle);
+
+
 int joshvm_audio_recorder_init(joshvm_media_t* handle);
 
 void joshvm_audio_recorder_task(void* handle);
+
+int joshvm_audio_recorder_read(joshvm_media_t* handle,unsigned char* buffer, int size, int* bytesRead);
 
 
 void joshvm_media_recorder_release(joshvm_media_t* handle);

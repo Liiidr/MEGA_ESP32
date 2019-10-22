@@ -39,7 +39,7 @@ void ring_buffer_flush(ring_buffer_t *rb)
 
 uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb)
 {
-	ESP_LOGI(TAG,"ring_buffer_write");
+	//ESP_LOGI(TAG,"ring_buffer_write");
     int32_t write_offset = rb->write_offset;
     int32_t total_size = rb->total_size;
     int32_t first_write_size = 0;
@@ -75,7 +75,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 
 uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
 {
-	ESP_LOGI(TAG,"ring_buffer_read");
+	//ESP_LOGI(TAG,"ring_buffer_read");
 
     int32_t read_offset = rb->read_offset;
 	int32_t write_offset = rb->write_offset;

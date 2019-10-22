@@ -48,6 +48,7 @@
 #include "filter_resample.h"
 
 #include "joshvm_audio_wrapper.h"
+#include "joshvm.h"
 #include "joshvm_esp32_media.h"//test
 
 esp_audio_handle_t player;
@@ -123,7 +124,7 @@ static void setup_player(void)
 
 	//extern xTaskHandle pvCreatedTask_player_task;
 	//esp_audio_state_task_stack = (StackType_t *) audio_calloc(1,ESP_AUDIO_STATE_TASK_SIZE);
-    xTaskCreate(esp_audio_state_task, "player_task", 2 * 1024, cfg.evt_que, 2, &esp_audio_state_task_handler);
+    xTaskCreate(esp_audio_state_task, "player_task", 2 * 1024, cfg.evt_que, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
 	/*esp_audio_state_task_handler = xTaskCreateStaticPinnedToCore((TaskFunction_t) 		esp_audio_state_task,
 													(const char *)  		"esp_audio_state_task", 
 													(const uint32_t) 		ESP_AUDIO_STATE_TASK_SIZE, 
@@ -274,7 +275,7 @@ static void joshvm_spiffs_audio_play_init(void)
 
 	//extern xTaskHandle pvCreatedTask_player_task_2;
 	//joshvm_audio_state_task_stack = (StackType_t*)audio_calloc(1,JOSHVM_AUDIO_STATE_TASK_SIZE);
-	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, NULL, 1, NULL);
+	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, NULL, JOSHVM_AUDIO_STATE_TASK_PRI, NULL);
 	/*joshvm_audio_state_task_handler = xTaskCreateStaticPinnedToCore((TaskFunction_t) 		joshvm_audio_state_task,
 														(const char *) 	 		"joshvm_audio_state_task",
 														(const uint32_t)		JOSHVM_AUDIO_STATE_TASK_SIZE,
