@@ -27,7 +27,8 @@ typedef enum{
 	MEDIA_PLAYER = 0,
 	MEDIA_RECORDER,
 	AUDIO_TRACK,
-	AUDIO_RECORDER
+	AUDIO_RECORDER,
+	AUDIO_VAD_REC
 }joshvm_type_t;
 
 //---
@@ -90,7 +91,10 @@ typedef struct{
 	ring_buffer_t *rec_rb;
 }joshvm_media_audiorecorder_t;
 
+typedef struct{
+	ring_buffer_t *rec_rb;
 
+}joshvm_media_audio_vad_rec_t;
 
 typedef struct {
 	uint8_t media_type;
@@ -101,6 +105,7 @@ typedef struct {
 		joshvm_media_mediarecorder_t joshvm_media_mediarecorder;
 		joshvm_media_audiotrack_t joshvm_media_audiotrack;
 		joshvm_media_audiorecorder_t joshvm_media_audiorecorder;
+		joshvm_media_audio_vad_rec_t joshvm_media_audio_vad_rec;
 	}joshvm_media_u;
 	
 }joshvm_media_t;
@@ -139,7 +144,7 @@ int joshvm_esp32_media_create(int type, void** handle);
  *     	 -1: fail
  *		...
  */
-int joshvm_esp32_media_close(void* handle);
+int joshvm_esp32_media_close(joshvm_media_t* handle);
 
 
 /**
@@ -219,21 +224,6 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle);
  *		...
  */
 int joshvm_esp32_media_reset(joshvm_media_t* handle);
-
-/**
- * @brief release 
- *
- * @note 
- *
- *
- * @param handle
- *    
- * @return (error code)
- *    -	0: ok
- *     	-1: fail
- *		...
- */
-int joshvm_esp32_media_release(joshvm_media_t* handle);
 
 /**
  * @brief release 
@@ -436,6 +426,9 @@ int joshvm_esp32_media_add_volume();
 int joshvm_esp32_media_sub_volume();
 
 void test_esp32_media(void);
+int joshvm_esp32_media_release(void* handle);
+
+
 
 #endif
 

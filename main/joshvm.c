@@ -65,6 +65,7 @@
 
 #include "joshvm_esp32_media.h"
 #include "sd_card_init.h"
+#include "joshvm_esp32_rec_engine.h"
 
 static const char *TAG              = "JOSHVM_Audio";
 extern esp_audio_handle_t           player;
@@ -74,6 +75,9 @@ static joshvm_cyclebuf voicebuff;
 static volatile int voicebuff_pos_case = 0;			//0: read_pos < write_pos;  1: read_pos > write_pos
 static volatile int voicedata_read_flag = 0;
 static QueueHandle_t Queue_vad_play = NULL;
+
+QueueHandle_t j_rec_eng_que_vad = NULL;
+
 #define QUEUE_VAD_PLAY_LEN	4
 #define QUEUE_VAD_PLAY_SIZE	4
 #define MP3_2_STREAM_URI "file://userdata/bingo_2.mp3"
@@ -98,14 +102,14 @@ extern void JavaNativeTest();
 //xTaskHandle pvCreatedTask_vadtask,pvCreatedTask_player_task,pvCreatedTask_player_task_2;  // check task stack
 
 
-void rec_engine_cb(rec_event_type_t type, void *user_data)
+static void rec_engine_cb(rec_event_type_t type, void *user_data)
 {
 	BaseType_t xReturn = pdFAIL;
 	uint32_t senddata; 
     if (REC_EVENT_WAKEUP_START == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_WAKEUP_START");
 			
-		//javanotify_simplespeech_event(1, 0);
+		javanotify_simplespeech_event(1, 0);
 		senddata = QUEUE_WAKEUP_START;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
 		if(pdPASS != xReturn)ESP_LOGE(TAG, "QUEUE_WAKEUP_START sended faild");
@@ -124,7 +128,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
     } else if (REC_EVENT_VAD_START == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_VAD_START");
 		
-		//javanotify_simplespeech_event(1, 2);
+		javanotify_simplespeech_event(1, 2);
 		voicedata_read_flag = 1;		
 		senddata = QUEUE_VAD_START;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
@@ -132,7 +136,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
 		
     } else if (REC_EVENT_VAD_STOP == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_VAD_STOP");
-		//javanotify_simplespeech_event(1, 3);
+		javanotify_simplespeech_event(1, 3);
 		voicedata_read_flag = 0;
 		senddata = QUEUE_VAD_STOP;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
@@ -141,7 +145,7 @@ void rec_engine_cb(rec_event_type_t type, void *user_data)
     } else if (REC_EVENT_WAKEUP_END == type) {
         ESP_LOGI(TAG, "rec_engine_cb - REC_EVENT_WAKEUP_END");
 		
-		//javanotify_simplespeech_event(1, 1);
+		javanotify_simplespeech_event(1, 1);
 		senddata = QUEUE_WAKEUP_END;
 		xReturn = xQueueSend(Queue_vad_play, &senddata, 0);
 		if(pdPASS != xReturn)ESP_LOGE(TAG, "QUEUE_WAKEUP_END sended faild");		
@@ -555,12 +559,7 @@ void joshvm_app_init(void)
     app_sdcard_init();
     //disp_serv = audio_board_led_init();
 
-	app_wifi_service();
-
-	audio_board_handle_t board_handle = audio_board_init();
-	printf("----------------1---------------\n");
-	audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-	printf("----------------2---------------\n");
+	//app_wifi_service();
 /*
     rec_config_t eng = DEFAULT_REC_ENGINE_CONFIG();
     eng.vad_off_delay_ms = 800;
@@ -577,31 +576,42 @@ void joshvm_app_init(void)
     eng.support_encoding = false;
     eng.user_data = NULL;
 	rec_engine_create(&eng);
-*/
+
 	Queue_vad_play = xQueueCreate(QUEUE_VAD_PLAY_LEN, QUEUE_VAD_PLAY_SIZE);
 	if(NULL == Queue_vad_play){
 		ESP_LOGE(TAG,"Queue_vad_play created failed");
 	}
 	
 	joshvm_cyclebuf_init(&voicebuff);
-	//xTaskCreate(vad_task, "vad_task", 4096, NULL, VAD_TASK_PRI,NULL);	
+	xTaskCreate(vad_task, "vad_task", 4096, NULL, VAD_TASK_PRI,NULL);	
+*/
+	audio_board_handle_t board_handle = audio_board_init();
+	printf("----------------1---------------\n");
+	audio_hal_ctrl_codec(board_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+	printf("----------------2---------------\n");
+	
+	j_rec_eng_que_vad = xQueueCreate(QUEUE_VAD_PLAY_LEN, QUEUE_VAD_PLAY_SIZE);
+	if(NULL == j_rec_eng_que_vad){
+		ESP_LOGE(TAG,"que_vad created failed");
+	}
 	
 	//joshvm_audio_wrapper_init();
-	//ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 
 	while (1) {
 
   		//JavaTask();
 		//JavaNativeTest();
 		test_esp32_media();
+		//test_rec_engine();
+		//joshvm_esp32_wifi_set("JOSH","josh20177",0);
 		
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);
-	        vTaskDelay(1000 / portTICK_PERIOD_MS);
+	        vTaskDelay(5000 / portTICK_PERIOD_MS);
 	    }
 	    printf("Restarting now.\n");
-	    fflush(stdout);
-	    esp_restart();	  
+	    //fflush(stdout);
+	    //esp_restart();	  
 	}
 }
 

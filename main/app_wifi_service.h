@@ -30,6 +30,17 @@ typedef enum{
  */
 void app_wifi_service(void);
 
+/**
+ * @brief 
+ *
+ * @note 
+ *
+ * @param 
+ *
+ * @return
+ *
+ */
+int joshvm_esp32_wifi_set(char* ssid, char* password, int force);
 
 
 

@@ -13,6 +13,7 @@
 #include "smart_config.h"
 #include "esp_log.h"
 #include "esp_wifi.h"
+#include "joshvm_esp32_media.h"
 
 static const char *TAG              = "APP_WIFI_SERVICE";
 static periph_service_handle_t wifi_serv = NULL;
@@ -97,6 +98,28 @@ void app_wifi_service(void)
 	
 	xTaskCreate(app_wifi_task,"app_wifi_task",2*1024,NULL,5,NULL);
 	
+}
+
+int joshvm_esp32_wifi_set(char* ssid, char* password, int force)
+{
+	int ret;
+	if(force == false){
+		ret = wifi_service_state_get(wifi_serv);
+		if(ret == PERIPH_SERVICE_STATE_RUNNING){
+			return JOSHVM_INVALID_STATE; 
+		}
+	}
+	
+	wifi_config_t sta_cfg = {0};
+	strncpy((char *)&sta_cfg.sta.ssid,ssid, strlen(ssid));
+	strncpy((char *)&sta_cfg.sta.password,password, strlen(password));
+	ret = wifi_service_set_sta_info(wifi_serv, &sta_cfg);
+	
+	
+	if(ret == ESP_OK){
+		return JOSHVM_OK;
+	}
+	return JOSHVM_FAIL;
 }
 
 

@@ -83,8 +83,8 @@ static void esp_audio_state_task (void *para)
             || (esp_state.status == AUDIO_STATUS_FINISHED)
             || (esp_state.status == AUDIO_STATUS_ERROR)) {
 
-			//javanotify_simplespeech_event(2, 0);
-			joshvm_esp32_media_callback();
+			javanotify_simplespeech_event(2, 0);
+			
         } 
     }
     vTaskDelete(NULL);
