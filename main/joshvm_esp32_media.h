@@ -1,11 +1,13 @@
 #ifndef _JOSHVM_ESP32_MEDIA_H_
 #define _JOSHVM_ESP32_MEDIA_H_
 
-#include "joshvm_esp32_raw_buff.h"
+#include "joshvm_esp32_ring_buff.h"
 
 //---define
 #define QUE_TRACK_START 1
-#define QUE_RECORD_STOP 2
+#define QUE_TRACK_STOP 2
+#define QUE_RECORD_STOP 3
+
 
 
 
@@ -36,7 +38,8 @@ typedef esp_err_t (*mediaplayer_callback)(void **handle,int);
 
 typedef struct{
 	char *url;						//dataSource
-	mediaplayer_callback callback;
+	//mediaplayer_callback callback;
+	void(*callback)(void*, int);
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;

@@ -35,42 +35,15 @@ typedef enum
 }rec_ecb_event_type_t;
 
 #define JOSHVM_CYCLEBUF_BUFFER_SIZE (REC_ONE_BLOCK_SIZE * 60)
-#define VAD_TASK_PRI					3
+#define VAD_TASK_PRI					4
 #define ESP_AUDIO_STATE_TASK_PRI		2
-#define JOSHVM_AUDIO_STATE_TASK_PRI		1
-#define	JOSHVM_AUDIO_TRACK_TASK_PRI		1
-#define	JOSHVM_AUDIO_RECORDER_TASK_PRI	1
-
-typedef struct _cyclebuf {
-	unsigned char* buffer;
-	unsigned char* read_pointer;
-	unsigned char* write_pointer;
-	unsigned char* reset_pos;
-	
-} joshvm_cyclebuf;
-
-
+#define JOSHVM_AUDIO_STATE_TASK_PRI		2
+#define	JOSHVM_AUDIO_TRACK_TASK_PRI		5
+#define	JOSHVM_AUDIO_RECORDER_TASK_PRI	3
 
 void joshvm_app_init(void);
 
 
-/*
-************************************voicebuff_pos_case 0 *******************************************
-
-             read_pointer|
-buffer0-----------------------------------------------------------------------------------buffer end
-			   												writer_pointer|
-													
-
-
-************************************voicebuff_pos_case 1 *******************************************
-
-             writer_pointer|
-buffer0-----------------------------------------------------------------------------------buffer end
-			   												read_pointer|
-													
-
-*/
 /**
  * @brief 
  *

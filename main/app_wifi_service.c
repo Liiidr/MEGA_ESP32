@@ -71,8 +71,8 @@ static void app_wifi_task(void *parameter)
 void app_wifi_service(void)
 {
 	//wifi_config_t sta_cfg = {0};
-	//strncpy((char *)&sta_cfg.sta.ssid,"JOSHH", strlen("JOSHH"));
-	//strncpy((char *)&sta_cfg.sta.password,"josh20177", strlen("josh20177"));
+	//strncpy((char *)&sta_cfg.sta.ssid,"JOSH", strlen("JOSH"));
+	//strncpy((char *)&sta_cfg.sta.password,"josh2017", strlen("josh2017"));
 
 	app_wifi_serv_queue = xQueueCreate(3, sizeof(uint32_t));
 	if(NULL == app_wifi_serv_queue){

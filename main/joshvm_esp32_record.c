@@ -338,7 +338,7 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 
 int joshvm_audio_track_init(joshvm_media_t* handle)
 {	
-    ESP_LOGI(TAG, "joshvm_audio_track_init");
+    //ESP_LOGI(TAG, "joshvm_audio_track_init");
 
 	audio_element_handle_t raw_writer = NULL;
     audio_pipeline_handle_t audio_track = NULL;
@@ -362,13 +362,23 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
     audio_pipeline_register(audio_track, raw_writer, "raw");
     audio_pipeline_link(audio_track, (const char *[]) {"raw","upsample", "i2s"}, 3);
 	
-    ESP_LOGI(TAG, "track has been created");
+    //ESP_LOGI(TAG, "track has been created");
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s = i2s_stream_writer;	
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.filter = filter_sample_el;	
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer = raw_writer;
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline = audio_track;
+//---test start
+	vTaskDelay(1000);
+	printf("track init %d\n",audio_element_get_state(i2s_stream_writer));
 
-    return JOSHVM_OK;
+	audio_pipeline_run(audio_track);
+	vTaskDelay(1000);
+	audio_pipeline_terminate(audio_track);
+	
+	printf("track test stop\n");
+	
+//---test stop
+	return audio_pipeline_run(audio_track);
 }
 
 void joshvm_audio_track_task(void* handle)
@@ -383,18 +393,23 @@ void joshvm_audio_track_task(void* handle)
 		if(que_val == QUE_TRACK_START){
 			while(ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb)){
 				raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+				printf("track valid_size = %d\n",audio_track_rb->valid_size);
+				printf("track task state %d\n",audio_element_get_state(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
 			}
-			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);		
-			//printf("track valid_size = %d\n",audio_track_rb->valid_size);
-		}
-		//vTaskDelay(1000);
+			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);	
+			//joshvm_esp32_media_stop((joshvm_media_t*)handle);
+		}else if(que_val == QUE_TRACK_STOP){
+			break;
+		}		
 	}		
 	audio_free(voicebuff);
+	vTaskDelete(NULL);
 }
 
-int joshvm_audio_track_write(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesWritten)
+int joshvm_audio_track_write(ring_buffer_t* rb, unsigned char* buffer, int size, int* bytesWritten)
 {
-	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,handle->joshvm_media_u.joshvm_media_audiotrack.track_rb);
+	//printf("write track_rb  valid_size = %d\n",handle->joshvm_media_u.joshvm_media_audiotrack.track_rb->valid_size);
+	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,rb);
 	if(*bytesWritten >=0){
 		return JOSHVM_OK;
 	}else{
@@ -404,8 +419,6 @@ int joshvm_audio_track_write(joshvm_media_t* handle, unsigned char* buffer, int 
 
 int joshvm_audio_recorder_init(joshvm_media_t* handle)
 {	
-    ESP_LOGI(TAG, "joshvm_audio_recorder_init");
-
 	audio_element_handle_t raw_reader = NULL;
     audio_pipeline_handle_t audio_recorder = NULL;
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -427,13 +440,13 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle)
     audio_pipeline_register(audio_recorder, raw_reader, "raw");
     audio_pipeline_link(audio_recorder, (const char *[]) {"i2s", "filter","raw"}, 3);
 	
-    ESP_LOGI(TAG, "Recorder has been created");
+    //ESP_LOGI(TAG, "Recorder has been created");
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s = i2s_stream_reader;	
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.filter = filter;	
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader = raw_reader;
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline = audio_recorder;	
 
-    return JOSHVM_OK;
+	return audio_pipeline_run(audio_recorder);
 }
 
 void joshvm_audio_recorder_task(void* handle)
@@ -453,16 +466,18 @@ void joshvm_audio_recorder_task(void* handle)
 			break;
 		}
 			
-		//printf("recorder valid_size = %d\n",audio_recorder_rb.valid_size);
+		printf("recorder valid_size = %d\n",audio_recorder_rb->valid_size);
 	}
 	audio_free(voicebuff);
 	//ring_buffer_deinit(&audio_recorder_rb);	
 	vTaskDelete(NULL);
 }
 
-int joshvm_audio_recorder_read(joshvm_media_t* handle,unsigned char* buffer, int size, int* bytesRead)
+int joshvm_audio_recorder_read(ring_buffer_t* rb,unsigned char* buffer, int size, int* bytesRead)
 {
-	*bytesRead = ring_buffer_read(buffer,size,handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb);
+	//printf("read recorder_rb valid_size = %d\n",handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb->valid_size);
+	//*bytesRead = ring_buffer_read(buffer,size,handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb);
+	*bytesRead = ring_buffer_read(buffer,size,rb);
 	if(*bytesRead >= 0){
 		return JOSHVM_OK;
 	}else{
@@ -491,6 +506,7 @@ void joshvm_media_recorder_release(joshvm_media_t* handle)
 void joshvm_audio_track_release(joshvm_media_t* handle)
 {
 	audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
+	printf("track release %d\n",audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
     audio_pipeline_unregister(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline,\
 		   					  handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer);
 	audio_pipeline_unregister(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline,\

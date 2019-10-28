@@ -94,12 +94,14 @@ int joshvm_audio_track_init(joshvm_media_t* handle);
 
 void joshvm_audio_track_task(void* handle);
 
+int joshvm_audio_track_write(ring_buffer_t* rb, unsigned char* buffer, int size, int* bytesWritten);
+
 
 int joshvm_audio_recorder_init(joshvm_media_t* handle);
 
 void joshvm_audio_recorder_task(void* handle);
 
-int joshvm_audio_recorder_read(joshvm_media_t* handle,unsigned char* buffer, int size, int* bytesRead);
+int joshvm_audio_recorder_read(ring_buffer_t* rb,unsigned char* buffer, int size, int* bytesRead);
 
 
 void joshvm_media_recorder_release(joshvm_media_t* handle);

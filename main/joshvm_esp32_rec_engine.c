@@ -23,8 +23,7 @@
 #include "joshvm_esp32_rec_engine.h"
 #include "joshvm_esp32_media.h"
 #include "joshvm.h"
-#include "joshvm_esp32_raw_buff.h"
-
+#include "joshvm_esp32_ring_buff.h"
 
 
 //---struct
@@ -40,23 +39,36 @@ static const char *TAG = "JOSHVM_REC_ENGINE>>>>>>>";
 static j_rec_engine_create_t *j_rec_engine_cfg;
 static int8_t j_wakeup_status = 0;	//detect wakeup have created or not
 static int8_t j_vad_status = 0;	//detect vad have created or not
-static uint8_t vad_run = 0;
-extern QueueHandle_t j_rec_eng_que_vad;
-
+static uint8_t vad_run = 0;//SAVE_OFF/SAVE_ON
+static QueueHandle_t j_que_vad = NULL;
+static QueueHandle_t j_que_wakeup  = NULL;
 
 
 //---define
-#define VAD_OFF_MS	5000
+#define VAD_OFF_MS	800
 #define REC_WAKEUP_OFF	0
 #define REC_WAKEUP_ON	1
 #define REC_VAD_OFF	0
 #define REC_VAD_ON	1
 #define	SIGN_WAKEUP	1
 #define SIGN_VAD	2
-#define SAVE_OFF 0
-#define SAVE_ON 1
 #define VAD_TASK_VAD_START	1
 #define VAD_TASK_VAD_STOP	2
+#define QUEUE_VAD_LEN	4
+#define QUEUE_VAD_SIZE	4
+
+//---enum
+enum{
+	SAVE_OFF = 0,
+	SAVE_ON,
+}J_QUE_VAD_E;
+
+enum{
+	WAKEUP_OFF = 0,
+	WAKEUP_ON,
+}J_QUE_WAKEUP_E;
+
+
 extern joshvm_media_t *joshvm_media;
 
 
@@ -71,7 +83,7 @@ static void vad_task(void *handle)
     }
 	
 	while(task_run){
-		xQueueReceive(j_rec_eng_que_vad, &r_queue, portMAX_DELAY);
+		xQueueReceive(j_que_vad, &r_queue, portMAX_DELAY);
 		if(joshvm_media == NULL){
 		 	ESP_LOGE(TAG, "joshvm_media = NULL. Func:%s, Line:%d, Malloc failed", __func__, __LINE__);
 			return;
@@ -114,28 +126,36 @@ static void rec_engine_cb(rec_event_type_t type, void *user_data)
 	j_rec_engine_create_t *callback = (j_rec_engine_create_t*)user_data;
     if (REC_EVENT_WAKEUP_START == type) {
 		if(callback->sign == SIGN_VAD){return;}
-		
+
         ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_WAKEUP_START");
 		((void(*)(int))callback->wakeup_callback)(1);
 		rec_engine_vad_enable(false);
+		
 			
     } else if (REC_EVENT_VAD_START == type) {
-        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_VAD_START");
-		vad_run = SAVE_ON;
-		r_queue = VAD_TASK_VAD_START;
-		xQueueSend(j_rec_eng_que_vad, &r_queue, 0);
-		((void(*)(int))callback->vad_callback)(0);
+		if(callback->sign == SIGN_VAD){
+	        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_VAD_START");
+			vad_run = SAVE_ON;
+			r_queue = VAD_TASK_VAD_START;
+			xQueueSend(j_que_vad, &r_queue, 0);
+			((void(*)(int))callback->vad_callback)(0);
+		}
 		
     } else if (REC_EVENT_VAD_STOP == type) {
-        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_VAD_STOP");
-		vad_run = SAVE_OFF;
-		r_queue = VAD_TASK_VAD_STOP;
-		xQueueSend(j_rec_eng_que_vad, &r_queue, 0);
-		((void(*)(int))callback->vad_callback)(1);
+    	if(callback->sign == SIGN_VAD){
+	        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_VAD_STOP");
+			vad_run = SAVE_OFF;
+			r_queue = VAD_TASK_VAD_STOP;
+			xQueueSend(j_que_vad, &r_queue, 0);
+			((void(*)(int))callback->vad_callback)(1);
+    	}
 
     } else if (REC_EVENT_WAKEUP_END == type) {
-        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_WAKEUP_END");		
-	
+		if(callback->sign == SIGN_VAD){return;}	
+		
+        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_WAKEUP_END");
+		r_queue = WAKEUP_ON;
+		xQueueSend(j_que_wakeup, &r_queue, 0);
 	
     } else {
     }
@@ -232,7 +252,7 @@ esp_err_t joshvm_rec_engine_create(j_rec_engine_create_t *handle)
 
 	rec_config_t eng = DEFAULT_REC_ENGINE_CONFIG();
 	eng.vad_off_delay_ms = handle->vad_off_ms;
-	eng.wakeup_time_ms = 10 * 1000;
+	eng.wakeup_time_ms = 2 * 1000;
 	eng.evt_cb = rec_engine_cb;
 #ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
 	eng.open = recorder_pipeline_open_for_mini;
@@ -286,7 +306,8 @@ int joshvm_esp32_wakeup_enable(void(*callback)(int))
 	}
 	j_rec_engine_cfg->wakeup_callback = callback;
 	j_wakeup_status = REC_WAKEUP_ON;	
-	
+
+	j_que_wakeup = xQueueCreate(QUEUE_VAD_LEN, QUEUE_VAD_SIZE);
 	if(ESP_OK == ret){
 		return JOSHVM_OK;
 	}
@@ -305,11 +326,17 @@ int joshvm_esp32_wakeup_disable()
 	if((j_vad_status == REC_VAD_ON) && (j_wakeup_status == REC_WAKEUP_ON)){
 		return JOSHVM_OK;
 	}	
-	
+
+	ESP_LOGI(TAG,"Waitting for wakeup end!");
+	uint32_t r_queue;
+	xQueueReceive(j_que_wakeup, &r_queue,portMAX_DELAY);
 	if(ESP_OK == joshvm_rec_engine_destroy()){
+		j_wakeup_status = REC_WAKEUP_OFF;
+		vQueueDelete(j_que_wakeup);
 		audio_free(j_rec_engine_cfg);
 		return JOSHVM_OK;
 	}
+		
 	return JOSHVM_FAIL;
 }
 
@@ -330,6 +357,12 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 	}	
 	j_rec_engine_cfg->vad_callback = callback;
 	j_vad_status = REC_VAD_ON;
+	
+	//---create que for rec_engine_cb to notify vad_task
+	j_que_vad = xQueueCreate(QUEUE_VAD_LEN, QUEUE_VAD_SIZE);
+	if(NULL == j_que_vad){
+		ESP_LOGE(TAG,"j_rec_eng_que_vad created failed");
+	}	
 
 	xTaskCreate(vad_task, "vad_task", 4096, NULL, VAD_TASK_PRI,NULL);
 	vTaskDelay(200);
@@ -368,6 +401,9 @@ int joshvm_esp32_vad_stop()
 		rec_engine_trigger_stop();
 		return JOSHVM_OK;
 	}	
+	j_vad_status = REC_VAD_OFF;
+	//---delete que
+	vQueueDelete(j_que_vad);
 	
 	joshvm_rec_engine_destroy();
 	audio_free(j_rec_engine_cfg);
