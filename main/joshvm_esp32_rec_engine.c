@@ -29,6 +29,7 @@
 //---struct
 typedef struct {
 	uint32_t vad_off_ms;
+	uint32_t wakeup_time_ms;
 	uint8_t sign;
 	void(*wakeup_callback)(int);
 	void(*vad_callback)(int);
@@ -130,8 +131,8 @@ static void rec_engine_cb(rec_event_type_t type, void *user_data)
         ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_WAKEUP_START");
 		((void(*)(int))callback->wakeup_callback)(1);
 		rec_engine_vad_enable(false);
+		joshvm_esp32_wakeup_disable();
 		
-			
     } else if (REC_EVENT_VAD_START == type) {
 		if(callback->sign == SIGN_VAD){
 	        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_VAD_START");
@@ -141,7 +142,7 @@ static void rec_engine_cb(rec_event_type_t type, void *user_data)
 			((void(*)(int))callback->vad_callback)(0);
 		}
 		
-    } else if (REC_EVENT_VAD_STOP == type) {
+    } else if (REC_EVENT_VAD_STOP == type) {		
     	if(callback->sign == SIGN_VAD){
 	        ESP_LOGI(TAG, "REC_ENGINE_CB_EVENT_VAD_STOP");
 			vad_run = SAVE_OFF;
@@ -162,7 +163,8 @@ static void rec_engine_cb(rec_event_type_t type, void *user_data)
 }
 
 static  audio_element_handle_t raw_read;
-#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+//#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 static esp_err_t recorder_pipeline_open_for_mini(void **handle)
 {
     audio_element_handle_t i2s_stream_reader;
@@ -242,7 +244,7 @@ static esp_err_t recorder_pipeline_read(void *handle, char *data, int data_size)
 
 static esp_err_t recorder_pipeline_close(void *handle)
 {
-    audio_pipeline_deinit(handle);
+    printf("audio_pipeline_deinit :%d\n",audio_pipeline_deinit(handle));
     return ESP_OK;
 }
 
@@ -252,9 +254,10 @@ esp_err_t joshvm_rec_engine_create(j_rec_engine_create_t *handle)
 
 	rec_config_t eng = DEFAULT_REC_ENGINE_CONFIG();
 	eng.vad_off_delay_ms = handle->vad_off_ms;
-	eng.wakeup_time_ms = 2 * 1000;
+	eng.wakeup_time_ms = 10*1000;//handle->wakeup_time_ms;
 	eng.evt_cb = rec_engine_cb;
-#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+//fdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 	eng.open = recorder_pipeline_open_for_mini;
 #else
 	eng.open = recorder_pipeline_open;

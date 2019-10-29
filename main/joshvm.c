@@ -102,9 +102,9 @@ void joshvm_app_init(void)
 
 	while (1) {
 
-		test_esp32_media();	
+		//test_esp32_media();	
 
-  		//JavaTask(); 
+  		JavaTask(); 
 		//JavaNativeTest();		
 		//test_rec_engine();
 		//joshvm_esp32_wifi_set("JOSH","josh20177",0);

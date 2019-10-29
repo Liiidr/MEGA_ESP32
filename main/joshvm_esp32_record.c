@@ -104,7 +104,8 @@ static esp_err_t rsp_filter_set_dest_info(audio_element_handle_t self, int dest_
 static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type)
 {
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
-	#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+	//#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+	#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 		if(AUDIO_STREAM_READER == type)i2s_cfg.i2s_port = 1;		
 	#endif
     i2s_cfg.i2s_config.use_apll = 0;
@@ -367,6 +368,7 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.filter = filter_sample_el;	
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer = raw_writer;
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline = audio_track;
+/*
 //---test start
 	vTaskDelay(1000);
 	printf("track init %d\n",audio_element_get_state(i2s_stream_writer));
@@ -378,6 +380,7 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	printf("track test stop\n");
 	
 //---test stop
+*/
 	return audio_pipeline_run(audio_track);
 }
 
@@ -385,22 +388,26 @@ void joshvm_audio_track_task(void* handle)
 {
 	QueueHandle_t que =((joshvm_media_t*)handle)->evt_que;
 	uint16_t que_val = 0;
+	uint8_t task_run = 1;
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
 	audio_element_handle_t raw_writer = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer;
 	ring_buffer_t* audio_track_rb = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.track_rb;
-	while(1){
+	while(task_run){
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
 			while(ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb)){
 				raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+				xQueueReceive(que, &que_val, 0);
+				if(que_val == QUE_TRACK_STOP){
+					task_run = 0;
+					break;
+				}				
 				printf("track valid_size = %d\n",audio_track_rb->valid_size);
 				printf("track task state %d\n",audio_element_get_state(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
 			}
 			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);	
-			//joshvm_esp32_media_stop((joshvm_media_t*)handle);
-		}else if(que_val == QUE_TRACK_STOP){
-			break;
-		}		
+			//joshvm_esp32_media_stop((joshvm_media_t*)handle);			
+		}	
 	}		
 	audio_free(voicebuff);
 	vTaskDelete(NULL);
@@ -461,7 +468,7 @@ void joshvm_audio_recorder_task(void* handle)
 	while(1){	
 		raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
 		ring_buffer_write(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_recorder_rb);
-		xQueueSend(que, &que_val, (portTickType)0);
+		xQueueReceive(que, &que_val, (portTickType)0);
 		if(que_val == QUE_RECORD_STOP){
 			break;
 		}
