@@ -397,17 +397,14 @@ void joshvm_audio_track_task(void* handle)
 		if(que_val == QUE_TRACK_START){
 			while(ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb)){
 				raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-				xQueueReceive(que, &que_val, 0);
-				if(que_val == QUE_TRACK_STOP){
-					task_run = 0;
-					break;
-				}				
 				printf("track valid_size = %d\n",audio_track_rb->valid_size);
-				printf("track task state %d\n",audio_element_get_state(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
+				//printf("track task state %d\n",audio_element_get_state(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
 			}
 			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);	
-			//joshvm_esp32_media_stop((joshvm_media_t*)handle);			
-		}	
+		}else if(que_val == QUE_TRACK_STOP){
+			task_run = 0;
+			break;
+		}		
 	}		
 	audio_free(voicebuff);
 	vTaskDelete(NULL);

@@ -107,7 +107,7 @@ void joshvm_app_init(void)
   		JavaTask(); 
 		//JavaNativeTest();		
 		//test_rec_engine();
-		//joshvm_esp32_wifi_set("JOSH","josh20177",0);
+	
 		
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);
