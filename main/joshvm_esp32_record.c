@@ -409,7 +409,7 @@ void joshvm_audio_track_task(void* handle)
 			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);			
 		}		
 	}	
-	audio_pipeline_terminate((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
+	audio_pipeline_terminate(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
 	joshvm_audio_track_release(handle);
 	audio_free(voicebuff);
 	vTaskDelete(NULL);

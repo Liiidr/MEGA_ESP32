@@ -104,9 +104,9 @@ void joshvm_app_init(void)
 
 		//test_esp32_media();	
 
-  		JavaTask(); 
+  		//JavaTask(); 
 		//JavaNativeTest();		
-		//test_rec_engine();
+		test_rec_engine();
 	
 		
 		for (int i = 10; i >= 0; i--) {
