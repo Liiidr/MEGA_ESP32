@@ -276,7 +276,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 	ESP_LOGI(TAG,"joshvm_esp32_media_stop");
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
-	int ret;
+	int ret = JOSHVM_FAIL;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:			
 			if((ret = joshvm_audio_stop_handler()) != ESP_OK){
@@ -292,14 +292,8 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 		case AUDIO_TRACK:	
 			que_val = QUE_TRACK_STOP;
 			xQueueSend(que, &que_val, (portTickType)0);
-			//vTaskDelete(audio_track_handler);
-			//ret = audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
-			ret = audio_element_stop(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer);
-			ret = audio_element_stop(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.filter);
-			ret = audio_element_stop(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s);
-			//ESP_LOGI(TAG,"AudioTrack stop!3");
-			joshvm_audio_track_release(handle);
 			ESP_LOGI(TAG,"AudioTrack stop!");
+			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
 			que_val = QUE_RECORD_STOP;
@@ -344,8 +338,6 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle)
 
 int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 {
-	ESP_LOGI(TAG,"joshvm_esp32_media_get_state");
-
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
@@ -683,7 +675,7 @@ void test_esp32_media(void)
 	
 
 	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
+	vTaskDelay(10000 / portTICK_PERIOD_MS); 
 	joshvm_esp32_media_stop(handle_recorder_test);
 
 	//joshvm_esp32_vad_stop();

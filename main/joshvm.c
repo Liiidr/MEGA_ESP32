@@ -89,7 +89,7 @@ void joshvm_app_init(void)
 
 
 	
-
+	/*
 	printf("Main task Executing on core : %d\n",xPortGetCoreID());
 
 	static char buf[1024];
@@ -97,7 +97,7 @@ void joshvm_app_init(void)
 	printf("JOSHVM_Audio,Run Time Stats:\nTask Name   Time	  Percent\n%s\n", buf);	
 	vTaskList(buf);
 	printf("JOSHVM_Audio,Task List:\nTask Name	 Status   Prio	  HWM	 Task Number\n%s\n", buf);
-	
+	*/
 	vTaskDelay(1000);
 
 	while (1) {
