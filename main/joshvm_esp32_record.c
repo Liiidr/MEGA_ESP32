@@ -297,17 +297,28 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 
 int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 {
-	ESP_LOGI(TAG, "joshvm_media_recorde_get_state");
 	int ret;
 	switch(handle->media_type)
 	{
 		case MEDIA_RECORDER:
+			if(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.i2s == NULL){
+				*state = JOSHVM_MEDIA_STOPPED;//??
+				return 0;
+			}
 			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.i2s);
 			break;
 		case AUDIO_TRACK:
-			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s);
+			if(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s == NULL){
+				*state = JOSHVM_MEDIA_STOPPED;//??
+				return 0;
+			}
+			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s);			
 			break;
 		case AUDIO_RECORDER:
+			if(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s == NULL){
+				*state = JOSHVM_MEDIA_STOPPED;//??
+				return 0;
+			}
 			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s);
 			ret = JOSHVM_OK;
 			break;
@@ -368,19 +379,6 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.filter = filter_sample_el;	
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer = raw_writer;
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline = audio_track;
-/*
-//---test start
-	vTaskDelay(1000);
-	printf("track init %d\n",audio_element_get_state(i2s_stream_writer));
-
-	audio_pipeline_run(audio_track);
-	vTaskDelay(1000);
-	audio_pipeline_terminate(audio_track);
-	
-	printf("track test stop\n");
-	
-//---test stop
-*/
 	return audio_pipeline_run(audio_track);
 }
 
@@ -395,17 +393,24 @@ void joshvm_audio_track_task(void* handle)
 	while(task_run){
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
-			while(ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb)){
-				raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-				printf("track valid_size = %d\n",audio_track_rb->valid_size);
-				//printf("track task state %d\n",audio_element_get_state(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
-			}
-			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);	
-		}else if(que_val == QUE_TRACK_STOP){
-			task_run = 0;
-			break;
+			while(1){//playing
+				while(ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb)){//play, once have data to play
+					raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+					printf("track valid_size = %d\n",audio_track_rb->valid_size);
+				}
+				
+				xQueueReceive(que, &que_val, 0);
+				if(que_val == QUE_TRACK_STOP){
+					printf("QUE_TRACK_STOP\n");
+					task_run = 0;
+					break;
+				}
+			}	
+			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);			
 		}		
-	}		
+	}	
+	audio_pipeline_terminate((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
+	joshvm_audio_track_release(handle);
 	audio_free(voicebuff);
 	vTaskDelete(NULL);
 }
@@ -461,7 +466,6 @@ void joshvm_audio_recorder_task(void* handle)
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
 	audio_element_handle_t raw_rec = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader;    
 
-	//ring_buffer_init(&audio_recorder_rb,A_RECORD_RB_SIZE);
 	while(1){	
 		raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
 		ring_buffer_write(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_recorder_rb);
@@ -510,7 +514,6 @@ void joshvm_media_recorder_release(joshvm_media_t* handle)
 void joshvm_audio_track_release(joshvm_media_t* handle)
 {
 	audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
-	printf("track release %d\n",audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
     audio_pipeline_unregister(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline,\
 		   					  handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer);
 	audio_pipeline_unregister(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline,\
