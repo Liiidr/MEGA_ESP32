@@ -101,7 +101,7 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle);
 
 void joshvm_audio_recorder_task(void* handle);
 
-int joshvm_audio_recorder_read(ring_buffer_t* rb,unsigned char* buffer, int size, int* bytesRead);
+int joshvm_audio_recorder_read(uint8_t status,ring_buffer_t* rb,unsigned char* buffer, int size, int* bytesRead);
 
 
 void joshvm_media_recorder_release(joshvm_media_t* handle);

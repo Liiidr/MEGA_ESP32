@@ -82,7 +82,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	if(run_one_time == 0){
 		run_one_time = 1;
 		printf(">>>-----------------------------------<<<\r\n");
-		printf("--->>>MEGA_ESP32 Version beta_v1.16*<<<---\r\n");
+		printf("--->>>MEGA_ESP32 Version beta_v1.21*<<<---\r\n");
 		printf(">>>-----------------------------------<<<\r\n");
 	}
 	int ret = JOSHVM_OK;	
@@ -217,6 +217,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				ESP_LOGI(TAG,"AudioTrack start!");
 				break;
 			case AUDIO_RECORDER:
+				handle->joshvm_media_u.joshvm_media_audiorecorder.status = AUDIO_START;
 				ret = joshvm_audio_recorder_init(handle);				
 				xTaskCreate(joshvm_audio_recorder_task, "joshvm_audio_recorder_task", 2 * 1024, (void*)handle, JOSHVM_AUDIO_RECORDER_TASK_PRI, &audio_recorder_handler);
 				ESP_LOGI(TAG,"AudioRecorder start!");
@@ -299,6 +300,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
+			handle->joshvm_media_u.joshvm_media_audiorecorder.status = AUDIO_STOP;
 			que_val = QUE_RECORD_STOP;
 			xQueueSend(que, &que_val, (portTickType)0);
 			//vTaskSuspend(audio_recorder_handler);//test
@@ -388,17 +390,25 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 	int ret = JOSHVM_OK;
 	switch(handle->media_type){
 		case AUDIO_RECORDER:
-			joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb,buffer,size,bytesRead);
+			ret = joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audiorecorder.status,\
+											 handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb,buffer,size,bytesRead);
+			if(ret == JOSHVM_NOTIFY_LATER){
+				callback(handle,JOSHVM_NOTIFY_LATER);
+				printf("callback****************1******************\n");
+			}
 			break;
 		case AUDIO_VAD_REC:
-			joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,buffer,size,bytesRead);
+			ret = joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audio_vad_rec.status,\
+											 handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,buffer,size,bytesRead);
+			if(ret == JOSHVM_NOTIFY_LATER){
+				callback(handle,JOSHVM_NOTIFY_LATER);
+				printf("callback****************2******************\n");
+			}
 			break;			
 		default:
 			ret = JOSHVM_INVALID_ARGUMENT;
 			break;		
 	}
-
-	//joshvm_audio_recorder_read(handle,buffer,size,bytesRead);
 	return ret;
 }
 

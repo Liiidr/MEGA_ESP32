@@ -101,7 +101,7 @@ uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
     rb->read_offset += size;
     rb->read_offset %= total_size;
     rb->valid_size -= size;
-	//printf("read rb valid_size = %d\n",rb->valid_size);
+	printf("read rb valid_size = %d\n",rb->valid_size);
 	return read_size;
 }
 

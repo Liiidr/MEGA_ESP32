@@ -246,7 +246,7 @@ static void joshvm_spiffs_audio_play_init(void)
 
 	audio_pipeline_register(pipeline, spiffs_stream,     "file_reader");
     audio_pipeline_register(pipeline, mp3_decoder,       "mp3_decoder");
-    audio_pipeline_register(pipeline, filter,   "filter_upsample");
+    audio_pipeline_register(pipeline, filter,   		 "filter_upsample");
     audio_pipeline_register(pipeline, i2s_stream,        "i2s_writer");
 	
 	audio_pipeline_link(pipeline, (const char *[]) {"file_reader", "mp3_decoder", "filter_upsample", "i2s_writer"}, 4);

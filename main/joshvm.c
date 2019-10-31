@@ -92,6 +92,7 @@ void joshvm_app_init(void)
 
 	
 	/*
+	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	printf("Main task Executing on core : %d\n",xPortGetCoreID());
 
 	static char buf[1024];
@@ -113,11 +114,11 @@ void joshvm_app_init(void)
 		
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);
-	        vTaskDelay(5000 / portTICK_PERIOD_MS);
+	        vTaskDelay(10000 / portTICK_PERIOD_MS);
 	    }
 	    printf("Restarting now.\n");
-	    //fflush(stdout);
-	    //esp_restart();	  
+	    fflush(stdout);
+	    esp_restart();	  
 	}
 }
 

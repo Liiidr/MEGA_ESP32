@@ -33,6 +33,12 @@ typedef enum{
 	AUDIO_VAD_REC
 }joshvm_type_t;
 
+enum{
+	AUDIO_START = 0,
+	AUDIO_STOP,
+}joshvm_audio_status_e;
+
+
 //---
 typedef esp_err_t (*mediaplayer_callback)(void **handle,int);
 
@@ -80,6 +86,7 @@ typedef struct{
 }joshvm_media_audiotrack_t;
 
 typedef struct{
+	uint8_t status;
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
@@ -95,6 +102,7 @@ typedef struct{
 }joshvm_media_audiorecorder_t;
 
 typedef struct{
+	uint8_t status;
 	ring_buffer_t *rec_rb;
 
 }joshvm_media_audio_vad_rec_t;

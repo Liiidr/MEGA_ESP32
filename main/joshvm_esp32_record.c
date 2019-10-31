@@ -228,29 +228,29 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	//---create encoder element
 	if(joshvm_meida_format_wav == handle->joshvm_media_u.joshvm_media_mediarecorder.format){
 		audio_element_handle_t wav_encoder = create_wav_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);
-		audio_pipeline_register(recorder, wav_encoder, "encode");
+		audio_pipeline_register(recorder, wav_encoder, "encode_media_rec");
 		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = wav_encoder;
 	}else if(joshvm_meida_format_amrnb == handle->joshvm_media_u.joshvm_media_mediarecorder.format){		
 		audio_element_handle_t amrnb_encoder = create_amrnb_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);		
-		audio_pipeline_register(recorder, amrnb_encoder, "encode");
+		audio_pipeline_register(recorder, amrnb_encoder, "encode_media_rec");
 		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = amrnb_encoder;
 	}else if(joshvm_meida_format_amrwb == handle->joshvm_media_u.joshvm_media_mediarecorder.format){
 		audio_element_handle_t amrwb_encoder = create_amrwb_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);		
-		audio_pipeline_register(recorder, amrwb_encoder, "encode");
+		audio_pipeline_register(recorder, amrwb_encoder, "encode_media_rec");
 		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = amrwb_encoder;
 	}else if(joshvm_meida_format_opus == handle->joshvm_media_u.joshvm_media_mediarecorder.format){
 		audio_element_handle_t opus_encoder = create_opus_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);
-		audio_pipeline_register(recorder, opus_encoder, "encode");
+		audio_pipeline_register(recorder, opus_encoder, "encode_media_rec");
 		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = opus_encoder; 
 	}
 
 	//---create fatfs element
 	audio_element_handle_t fatfs_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
 	//---register
-    audio_pipeline_register(recorder, i2s_stream_reader, "i2s");
-	audio_pipeline_register(recorder, filter, "resample");
-	audio_pipeline_register(recorder, fatfs_writer, "fatfs");
-    audio_pipeline_link(recorder, (const char *[]) {"i2s","resample","encode","fatfs"}, 4);
+    audio_pipeline_register(recorder, i2s_stream_reader, "i2s_media_rec");
+	audio_pipeline_register(recorder, filter, "resample_media_rec");
+	audio_pipeline_register(recorder, fatfs_writer, "fatfs_media_rec");
+    audio_pipeline_link(recorder, (const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","fatfs_media_rec"}, 4);
 	audio_element_set_uri(fatfs_writer,handle->joshvm_media_u.joshvm_media_mediarecorder.url);
 	ESP_LOGI(TAG,"Set default url:%s",handle->joshvm_media_u.joshvm_media_mediarecorder.url);	
     ESP_LOGI(TAG, "Recorder has been created");
@@ -369,10 +369,10 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
     raw_cfg.type = AUDIO_STREAM_WRITER;
     raw_writer = raw_stream_init(&raw_cfg);
 
-    audio_pipeline_register(audio_track, i2s_stream_writer, "i2s");
-	audio_pipeline_register(audio_track, filter_sample_el, "upsample");
-    audio_pipeline_register(audio_track, raw_writer, "raw");
-    audio_pipeline_link(audio_track, (const char *[]) {"raw","upsample", "i2s"}, 3);
+    audio_pipeline_register(audio_track, i2s_stream_writer, "i2s_audio_tra");
+	audio_pipeline_register(audio_track, filter_sample_el, "upsample_audio_tra");
+    audio_pipeline_register(audio_track, raw_writer, "raw_audio_tra");
+    audio_pipeline_link(audio_track, (const char *[]) {"raw_audio_tra","upsample_audio_tra", "i2s_audio_tra"}, 3);
 	
     //ESP_LOGI(TAG, "track has been created");
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s = i2s_stream_writer;	
@@ -444,10 +444,10 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle)
     raw_cfg.type = AUDIO_STREAM_READER;
     raw_reader = raw_stream_init(&raw_cfg);
 
-    audio_pipeline_register(audio_recorder, i2s_stream_reader, "i2s");
-	audio_pipeline_register(audio_recorder, filter, "filter");
-    audio_pipeline_register(audio_recorder, raw_reader, "raw");
-    audio_pipeline_link(audio_recorder, (const char *[]) {"i2s", "filter","raw"}, 3);
+    audio_pipeline_register(audio_recorder, i2s_stream_reader, "i2s_aduio_rec");
+	audio_pipeline_register(audio_recorder, filter, "filter_aduio_rec");
+    audio_pipeline_register(audio_recorder, raw_reader, "raw_aduio_rec");
+    audio_pipeline_link(audio_recorder, (const char *[]) {"i2s_aduio_rec", "filter_aduio_rec","raw_aduio_rec"}, 3);
 	
     //ESP_LOGI(TAG, "Recorder has been created");
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s = i2s_stream_reader;	
@@ -481,16 +481,19 @@ void joshvm_audio_recorder_task(void* handle)
 	vTaskDelete(NULL);
 }
 
-int joshvm_audio_recorder_read(ring_buffer_t* rb,unsigned char* buffer, int size, int* bytesRead)
+int joshvm_audio_recorder_read(uint8_t status,ring_buffer_t* rb,unsigned char* buffer, int size, int* bytesRead)
 {
-	//printf("read recorder_rb valid_size = %d\n",handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb->valid_size);
-	//*bytesRead = ring_buffer_read(buffer,size,handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb);
 	*bytesRead = ring_buffer_read(buffer,size,rb);
-	if(*bytesRead >= 0){
+	if(*bytesRead > 0){
 		return JOSHVM_OK;
-	}else{
-		return JOSHVM_FAIL;
+	}else if(*bytesRead == 0){	
+		if(AUDIO_STOP == status){			
+			return JOSHVM_OK;
+		}else if(AUDIO_START == status){
+			return JOSHVM_NOTIFY_LATER;
+		}		
 	}
+	return JOSHVM_FAIL;	
 }
 
 void joshvm_media_recorder_release(joshvm_media_t* handle)
