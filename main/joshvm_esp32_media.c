@@ -19,6 +19,7 @@
 //5*48*2*1000    48K*2CHA*5S = 16K*1CHA*60S 
 #define A_RECORD_RB_SIZE 48*10000
 #define A_TRACK_RB_SIZE 48*10000
+#define A_VAD_RB_SIZE 48*10000
 //---variable
 static int8_t audio_status = 0;
 static struct{
@@ -75,13 +76,15 @@ void joshvm_esp32_media_callback()
 static ring_buffer_t audio_recorder_rb;
 static ring_buffer_t audio_track_rb;
 static ring_buffer_t audio_vad_rb;
-
+static uint8_t run_one_time = 0;
 int joshvm_esp32_media_create(int type, void** handle)
 {
-	printf(">>>-----------------------------------<<<\r\n");
-	printf("--->>>MEGA_ESP32 Version beta_v1.13*<<<---\r\n");
-	printf(">>>-----------------------------------<<<\r\n");
-
+	if(run_one_time == 0){
+		run_one_time = 1;
+		printf(">>>-----------------------------------<<<\r\n");
+		printf("--->>>MEGA_ESP32 Version beta_v1.16*<<<---\r\n");
+		printf(">>>-----------------------------------<<<\r\n");
+	}
 	int ret = JOSHVM_OK;	
 	joshvm_media = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 	joshvm_media->media_type = type;
@@ -667,24 +670,30 @@ void test_esp32_media(void)
 	//joshvm_esp32_media_create(0,&handle_media_player_test);
 	//joshvm_esp32_media_create(1,&handle_media_rec_test);
 	joshvm_esp32_media_create(2,&handle_player_test);
-	joshvm_esp32_media_create(3,&handle_recorder_test);
+	joshvm_esp32_media_create(4,&handle_recorder_test);
 	//joshvm_esp32_vad_start(test_vad_callback);
 
 
 
+	test_rec_engine();
+
 	
 
-	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
-	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-	joshvm_esp32_media_stop(handle_recorder_test);
+	//joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
+	vTaskDelay(20000 / portTICK_PERIOD_MS); 
+	//joshvm_esp32_media_stop(handle_recorder_test);
 
 	//joshvm_esp32_vad_stop();
 
+	joshvm_esp32_wakeup_disable();
 
-	((joshvm_media_t*)handle_player_test)->joshvm_media_u.joshvm_media_audiotrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->joshvm_media_u.joshvm_media_audiorecorder.rec_rb;
+	joshvm_esp32_vad_stop();
+
+
+	((joshvm_media_t*)handle_player_test)->joshvm_media_u.joshvm_media_audiotrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb;
 
 	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
-	vTaskDelay(2000 / portTICK_PERIOD_MS); 
+	vTaskDelay(20000 / portTICK_PERIOD_MS); 
 	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_player_test)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
 	joshvm_esp32_media_stop(handle_player_test);
 

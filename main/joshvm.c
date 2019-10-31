@@ -42,6 +42,7 @@
 #include "joshvm_esp32_rec_engine.h"
 #include "joshvm_esp32_player.h"
 #include "joshvm.h"
+#include "joshvm_esp32_timer.h"
 
 //---variate
 static const char *TAG              = "JOSHVM_Audio";
@@ -81,11 +82,12 @@ void joshvm_app_init(void)
 	MegaBoard_handle = audio_board_init();
 	audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
-	esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-	esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+	//esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
+	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
     app_sdcard_init();
 	app_wifi_service();
+	joshvm_vad_timer();
 
 
 	
@@ -104,9 +106,9 @@ void joshvm_app_init(void)
 
 		//test_esp32_media();	
 
-  		//JavaTask(); 
+  		JavaTask(); 
 		//JavaNativeTest();		
-		test_rec_engine();
+	
 	
 		
 		for (int i = 10; i >= 0; i--) {

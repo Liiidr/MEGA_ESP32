@@ -31,6 +31,7 @@
 #include "joshvm.h"
 #include "joshvm_esp32_ring_buff.h"
 
+
 #include "recorder_engine.h"
 
 //---enum
@@ -68,6 +69,7 @@ typedef struct{
 	int8_t wakeup_state;
 	int8_t vad_state;
 	uint32_t vad_off_time;
+	int16_t *voice_buff;
 	void* i2s_reader;
 	void* filter;
 	void* raw_reader;
@@ -80,14 +82,17 @@ typedef struct{
 //---variable
 static const char *TAG = "JOSHVM_REC_ENGINE>>>>>>>";
 static rec_engine_t rec_engine;
+static int8_t need_notify_vad_stop = false;
+static TaskHandle_t rec_engine_task_handler = NULL;
 uint32_t vad_off_time = 0;
-//extern joshvm_media_t *joshvm_media;
+
+extern joshvm_media_t *joshvm_media;
 
 //---define
 #define VAD_SAMPLE_RATE_HZ 16000
 #define VAD_FRAME_LENGTH_MS 30
 #define VAD_BUFFER_LENGTH (VAD_FRAME_LENGTH_MS * VAD_SAMPLE_RATE_HZ / 1000)
-#define VAD_OFF_TIME 800
+#define VAD_OFF_TIME 1000
 
 
 static void rec_vad_cb(rec_event_tpye_e type, void *user_data)
@@ -122,7 +127,7 @@ static uint32_t recorder_pipeline_init(rec_engine_t* rec_engine)
 		int sample_rate = rec_engine->model->get_samp_rate(rec_engine->iface);
 		int audio_chunksize = rec_engine->model->get_samp_chunksize(rec_engine->iface);
 		ESP_LOGI(TAG, "keywords_num = %d, threshold = %f, sample_rate = %d, chunksize = %d, sizeof_uint16 = %d", num, threshold, sample_rate, audio_chunksize, sizeof(int16_t));
-	
+		rec_engine->voice_buff = (int16_t *)audio_malloc(audio_chunksize * sizeof(short));
 		audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
 		rec_engine->pipeline = audio_pipeline_init(&pipeline_cfg);
 		mem_assert(rec_engine->pipeline);
@@ -155,12 +160,20 @@ static uint32_t recorder_pipeline_init(rec_engine_t* rec_engine)
 		audio_pipeline_run(rec_engine->pipeline);
 
 		rec_engine->vad_inst = vad_create(VAD_MODE_4, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
+		
 	return 0;
 }
 
 static uint32_t recorder_pipeline_deinit(rec_engine_t* rec_engine)
 {
 	ESP_LOGI(TAG,"recorder_pipeline_deinit");
+	ESP_LOGI(TAG, "[ 7 ] Destroy model");
+	rec_engine->model->destroy(rec_engine->iface);
+	rec_engine->model = NULL;
+
+	vad_destroy(rec_engine->vad_inst);
+	audio_free(rec_engine->voice_buff);
+	rec_engine->voice_buff = NULL;
 	
 	audio_pipeline_terminate(rec_engine->pipeline);	
 	/* Terminate the pipeline before removing the listener */
@@ -173,11 +186,7 @@ static uint32_t recorder_pipeline_deinit(rec_engine_t* rec_engine)
 	audio_element_deinit(rec_engine->raw_reader);
 	audio_element_deinit(rec_engine->i2s_reader);
 	audio_element_deinit(rec_engine->filter);	
-	ESP_LOGI(TAG, "[ 7 ] Destroy model");
-	rec_engine->model->destroy(rec_engine->iface);
-	rec_engine->model = NULL;
 
-	vad_destroy(rec_engine->vad_inst);
 	return 0;
 }
 
@@ -185,88 +194,96 @@ static void rec_engine_task(void* handle)
 {
 	ESP_LOGI(TAG,"rec_engine_task");
 	vad_state_t last_vad_state = 0;
+	vad_state_t vad_state = 0;
 	rec_engine_t* rec_engine = (rec_engine_t*)handle;
 	int audio_chunksize = rec_engine->model->get_samp_chunksize(rec_engine->iface);
-	int16_t *buff = (int16_t *)audio_malloc(audio_chunksize * sizeof(short));
-	if (NULL == buff) {
+	audio_chunksize = audio_chunksize * sizeof(short);
+	//int16_t *voice_buff = (int16_t *)audio_malloc(audio_chunksize * sizeof(short));
+	if (NULL == rec_engine->voice_buff) {
 		ESP_LOGE(TAG, "Memory allocation failed!");
 		rec_engine->model->destroy(rec_engine->iface);
 		rec_engine->model = NULL;
 		return;
 	}
-	
+
+	int8_t vad_writer_buff_flag = 0;
 	while (1) {
-		raw_stream_read(rec_engine->raw_reader, (char *)buff, audio_chunksize * sizeof(short));
-
-	
-		int keyword = rec_engine->model->detect(rec_engine->iface, (int16_t *)buff);
-		switch (keyword) {
-			case WAKE_UP:
-				ESP_LOGI(TAG, "Wake up");
-				rec_engine->wakeup_callback(0);
-				break;
-			case OPEN_THE_LIGHT:
-				ESP_LOGI(TAG, "Turn on the light");
-				break;
-			case CLOSE_THE_LIGHT:
-				ESP_LOGI(TAG, "Turn off the light");
-				break;
-			case VOLUME_INCREASE:
-				ESP_LOGI(TAG, "volume increase");
-				break;
-			case VOLUME_DOWN:
-				ESP_LOGI(TAG, "volume down");
-				break;
-			case PLAY:
-				ESP_LOGI(TAG, "play");
-				break;
-			case PAUSE:
-				ESP_LOGI(TAG, "pause");
-				break;
-			case MUTE:
-				ESP_LOGI(TAG, "mute");
-				break;
-			case PLAY_LOCAL_MUSIC:
-				ESP_LOGI(TAG, "play local music");
-				break;
-			default:
-				ESP_LOGD(TAG, "Not supported keyword");
-				break;
-		}
+		raw_stream_read(rec_engine->raw_reader, (char *)rec_engine->voice_buff, audio_chunksize);
 		
-
-		vad_state_t vad_state = vad_process(rec_engine->vad_inst, buff);
-
-		if(vad_state == VAD_SPEECH){
-			//clear timer
-			vad_off_time = 0;
-		}
-
-
-		if(vad_off_time >= rec_engine->vad_off_time){
-			ESP_LOGI(TAG,"VAD_STOP");
-
-		}
+		if(rec_engine->vad_state == VAD_START){	
+			vad_state = vad_process(rec_engine->vad_inst, rec_engine->voice_buff);
 			
-		//detect voice
-		if((vad_state != last_vad_state) && (vad_state == VAD_SPEECH)){
-			ESP_LOGI(TAG,"VAD_START");
-			last_vad_state = vad_state;
+			if(vad_state == VAD_SPEECH){
+				//ESP_LOGI(TAG, "Speech detected");
+				//clear timer,vad_off_time increase 1 per 200ms
+				vad_off_time = 0;
+			}			
 			
-		}else if((vad_state != last_vad_state) && (vad_state == VAD_SILENCE)){
-			last_vad_state = vad_state;
+			//vad stop		
+			if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){
+				ESP_LOGI(TAG,"VAD_STOP");
+				need_notify_vad_stop = false;
+				rec_engine->vad_callback(1);
+				vad_writer_buff_flag = 0;
+			}
+				
+			//detect voice 
+			if((vad_state != last_vad_state) && (vad_state == VAD_SPEECH) && (vad_writer_buff_flag == 0)){
+				ESP_LOGI(TAG,"VAD_START");
+				last_vad_state = vad_state;
+				rec_engine->vad_callback(0);
+				vad_writer_buff_flag = 1;				
+			}else if((vad_state != last_vad_state) && (vad_state == VAD_SILENCE)){
+				last_vad_state = vad_state;
+				need_notify_vad_stop = true;
+			}
 
+			if(vad_writer_buff_flag){
+				ring_buffer_write(rec_engine->voice_buff,audio_chunksize,joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
+			}
 		}
 
-
-		
-        if (vad_state == VAD_SPEECH) {
-            ESP_LOGI(TAG, "Speech detected");
-        }
-	
+		if(rec_engine->wakeup_state == WAKEUP_ENABLE){
+			int keyword = rec_engine->model->detect(rec_engine->iface, (int16_t *)rec_engine->voice_buff);
+			switch (keyword) {
+				case WAKE_UP:
+					ESP_LOGI(TAG, "Wake up");
+					rec_engine->wakeup_callback(0);
+					break;
+				case OPEN_THE_LIGHT:
+					ESP_LOGI(TAG, "Turn on the light");
+					break;
+				case CLOSE_THE_LIGHT:
+					ESP_LOGI(TAG, "Turn off the light");
+					break;
+				case VOLUME_INCREASE:
+					ESP_LOGI(TAG, "volume increase");
+					break;
+				case VOLUME_DOWN:
+					ESP_LOGI(TAG, "volume down");
+					break;
+				case PLAY:
+					ESP_LOGI(TAG, "play");
+					break;
+				case PAUSE:
+					ESP_LOGI(TAG, "pause");
+					break;
+				case MUTE:
+					ESP_LOGI(TAG, "mute");
+					break;
+				case PLAY_LOCAL_MUSIC:
+					ESP_LOGI(TAG, "play local music");
+					break;
+				default:
+					ESP_LOGD(TAG, "Not supported keyword");
+					break;
+			}
+		}
+/*
+		if((WAKEUP_DISABLE == rec_engine->wakeup_state) && (VAD_STOP == rec_engine->vad_state)){
+			break;
+		}		*/
 	}
-	audio_free(buff);
-	buff = NULL;
 }
 
 
@@ -274,10 +291,9 @@ static void rec_engine_task(void* handle)
 
 static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e type)
 {
-	if((rec_engine->wakeup_state == WAKEUP_ENABLE) || (rec_engine->vad_state == VAD_START)){
-		ESP_LOGI(TAG,"rec_engine have create!");
-		return JOSHVM_OK;
-	}
+	int8_t wakeup_state,vad_state;
+	wakeup_state = rec_engine->wakeup_state;
+	vad_state = rec_engine->vad_state;
 
 	switch(type){
 		case WAKEUP_ENABLE:
@@ -290,9 +306,14 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 
 		break;
 	}
+
+	if((wakeup_state == WAKEUP_ENABLE) || (vad_state == VAD_START)){
+		ESP_LOGI(TAG,"rec_engine have create!");
+		return JOSHVM_OK;
+	}
 	
 	recorder_pipeline_init(rec_engine);
-	xTaskCreate(rec_engine_task, "rec_engine_task",2*1024, rec_engine, 10, NULL);
+	xTaskCreate(rec_engine_task, "rec_engine_task",2*1024, rec_engine, 10, &rec_engine_task_handler);
 
 	return 0;
 }
@@ -312,10 +333,11 @@ esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type)
 	}
 
 	if((rec_engine->wakeup_state == WAKEUP_DISABLE) && (rec_engine->vad_state == VAD_STOP)){
-		recorder_pipeline_deinit(&rec_engine);
+		vTaskDelete(rec_engine_task_handler);
+		
+		//recorder_pipeline_deinit(&rec_engine);
 	}
 	
-	//free task buff
 	return 0;
 }
 
@@ -392,7 +414,7 @@ int joshvm_esp32_vad_stop()
 
 int joshvm_esp32_vad_set_timeout(int ms)
 {
-	rec_engine->vad_off_time = ms;
+	rec_engine.vad_off_time = ms;
 	return JOSHVM_OK;
 }
 
@@ -400,7 +422,7 @@ int joshvm_esp32_vad_set_timeout(int ms)
 
 void test_callback(int index)
 {
-	printf("wakeup   callback  ---------------- index = %d\n",index);
+	printf("wakeup   callback  index = %d\n",index);
 	
 }
 
@@ -417,11 +439,10 @@ void test_rec_engine(void)
 
 	joshvm_esp32_vad_start(test_vad_callback);
 
-	joshvm_esp32_wakeup_disable();
 
-	joshvm_esp32_vad_stop();
+
 	
-
+	
 
 }
 
