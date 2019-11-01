@@ -503,7 +503,7 @@ void joshvm_audio_recorder_task(void* handle)
 			break;
 		}
 			
-		printf("recorder valid_size = %d\n",audio_recorder_rb->valid_size);
+		//printf("recorder valid_size = %d\n",audio_recorder_rb->valid_size);
 	}
 	audio_free(voicebuff);
 	//ring_buffer_deinit(&audio_recorder_rb);	

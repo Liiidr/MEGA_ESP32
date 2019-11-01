@@ -47,6 +47,8 @@
 //---variate
 static const char *TAG              = "JOSHVM_Audio";
 audio_board_handle_t MegaBoard_handle = NULL;
+UBaseType_t pvCreatedTask_vadtask;
+
 
 extern esp_audio_handle_t           player;
 
@@ -85,7 +87,7 @@ void joshvm_app_init(void)
 	//esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
 	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
-    app_sdcard_init();
+    //app_sdcard_init();
 	app_wifi_service();
 	joshvm_vad_timer();
 
@@ -105,8 +107,9 @@ void joshvm_app_init(void)
 
 	while (1) {
 
-		//test_esp32_media();	
-
+		
+		pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
+		//test_esp32_media();
   		JavaTask(); 
 		//JavaNativeTest();		
 	

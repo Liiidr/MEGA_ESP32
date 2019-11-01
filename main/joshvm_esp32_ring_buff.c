@@ -76,7 +76,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 		rb->read_offset = rb->write_offset;
 		rb->valid_size = rb->total_size;	
 	}
-	ESP_LOGI(TAG,"write rb valid_size = %d\n",rb->valid_size);
+	//ESP_LOGI(TAG,"write rb valid_size = %d\n",rb->valid_size);
 	return written_size;
 }
 

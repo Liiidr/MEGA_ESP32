@@ -59,13 +59,18 @@ static audio_element_handle_t i2s_stream,spiffs_stream,mp3_decoder,filter;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
 
+typedef struct{
+	QueueHandle_t que;
+	joshvm_media_t* handle;
+}esp_audio_state_task_t;
 
 extern void javanotify_simplespeech_event(int, int);
 static void joshvm_spiffs_audio_play_init(void);
 
 static void esp_audio_state_task (void *para)
 {
-    QueueHandle_t que = (QueueHandle_t) para;
+    QueueHandle_t que = ((esp_audio_state_task_t *) para)->que;
+	joshvm_media_t *handle = ((esp_audio_state_task_t *) para)->handle;
     esp_audio_state_t esp_state = {0};
     while (1) {
         xQueueReceive(que, &esp_state, portMAX_DELAY);
@@ -75,11 +80,15 @@ static void esp_audio_state_task (void *para)
             || (esp_state.status == AUDIO_STATUS_ERROR)) {
 
 			//javanotify_simplespeech_event(2, 0);
-			joshvm_esp32_media_callback();
+			joshvm_esp32_media_callback(handle);
 			break;//???
         } 
     }
 	vQueueDelete(que);
+	if(para != NULL){
+		audio_free(para);
+		para = NULL;
+	}
     vTaskDelete(NULL);
 }
 
@@ -98,11 +107,12 @@ int _http_stream_event_handle(http_stream_event_msg_t *msg)
     return ESP_OK;
 }
 
-static void setup_player(void)
+static void setup_player(joshvm_media_t* handle)
 {
     if (player) {
         return ;
     }
+	esp_audio_state_task_t *esp_audio_state_task_param = (esp_audio_state_task_t*)audio_malloc(sizeof(esp_audio_state_task_t));
 
     esp_audio_cfg_t cfg = DEFAULT_ESP_AUDIO_CONFIG();
     cfg.resample_rate = 48000;
@@ -110,7 +120,11 @@ static void setup_player(void)
     cfg.evt_que = xQueueCreate(3, sizeof(esp_audio_state_t));
     player = esp_audio_create(&cfg);
 
-    xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, cfg.evt_que, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
+	esp_audio_state_task_param->que = cfg.evt_que;
+	esp_audio_state_task_param->handle = handle;
+    //xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, cfg.evt_que, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
+	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, (void*)esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
+
 
     // Create readers and add to esp_audio
     fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
@@ -156,9 +170,9 @@ static void setup_player(void)
     ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
 
-void joshvm_audio_wrapper_init()
+void joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
-    setup_player();
+    setup_player(handle);
 	joshvm_spiffs_audio_play_init();
 }
 
