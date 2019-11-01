@@ -72,6 +72,9 @@ typedef struct{
 }joshvm_media_mediarecorder_t;
 
 typedef struct{
+	uint8_t status;
+	uint8_t rb_callback_flag;
+	void(*rb_callback)(void*, int);
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;

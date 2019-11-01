@@ -387,6 +387,9 @@ void joshvm_audio_track_task(void* handle)
 	QueueHandle_t que =((joshvm_media_t*)handle)->evt_que;
 	uint16_t que_val = 0;
 	uint8_t task_run = 1;
+	uint8_t read_size = 0;
+	uint8_t rb_callback_flag = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.rb_callback_flag;
+	void(*callback)(void*, int) = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.rb_callback;
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
 	audio_element_handle_t raw_writer = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer;
 	ring_buffer_t* audio_track_rb = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.track_rb;
@@ -394,11 +397,25 @@ void joshvm_audio_track_task(void* handle)
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
 			while(1){//playing
-				while(ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb)){//play, once have data to play
+				read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
+				if(read_size){
+					if(NEED_CB == rb_callback_flag){
+						rb_callback_flag = NO_NEED_CB;
+						callback(handle,JOSHVM_OK);
+					}
 					raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
 					printf("track valid_size = %d\n",audio_track_rb->valid_size);
 				}
-				
+
+				/*
+				if((read_size) && (NEED_CB == rb_callback_flag)){
+					callback(handle,JOSHVM_OK);
+				}
+				while(read_size){//play, once have data to play
+					raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+					printf("track valid_size = %d\n",audio_track_rb->valid_size);
+				}
+				*/
 				xQueueReceive(que, &que_val, 0);
 				if(que_val == QUE_TRACK_STOP){
 					printf("QUE_TRACK_STOP\n");
@@ -415,11 +432,17 @@ void joshvm_audio_track_task(void* handle)
 	vTaskDelete(NULL);
 }
 
-int joshvm_audio_track_write(ring_buffer_t* rb, unsigned char* buffer, int size, int* bytesWritten)
+int joshvm_audio_track_write(uint8_t status,ring_buffer_t* rb, unsigned char* buffer, int size, int* bytesWritten)
 {
 	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,rb,RB_NOT_COVER);
-	if(*bytesWritten >=0){
+	if(*bytesWritten > 0){
 		return JOSHVM_OK;
+	}else if(*bytesWritten == 0){
+		if(AUDIO_STOP == status){
+			return JOSHVM_OK;				
+		}else{
+			return JOSHVM_NOTIFY_LATER;
+		}
 	}else{
 		return JOSHVM_FAIL;
 	}

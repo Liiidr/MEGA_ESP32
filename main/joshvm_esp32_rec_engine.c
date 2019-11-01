@@ -143,7 +143,8 @@ static void rec_engine_task(void *handle)
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
 
-		if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){	
+		//if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){	
+		if(rec_engine->vad_state != VAD_STOP){//XIUGAI PAUSE	
 			vad_state = vad_process(vad_inst, buff);
 			
 			if(vad_state == VAD_SPEECH){
@@ -151,7 +152,9 @@ static void rec_engine_task(void *handle)
 				vad_off_time = 0;
 			}			
 			//vad stop		
-			if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){
+			//if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){
+			if((((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true))\
+				|| (rec_engine->vad_state == VAD_PAUSE)){//XIUGAI PAUSE
 				ESP_LOGI(TAG,"VAD_STOP");
 				need_notify_vad_stop = false;
 				rec_engine->vad_callback(1);

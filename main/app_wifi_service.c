@@ -106,6 +106,7 @@ int joshvm_esp32_wifi_set(char* ssid, char* password, int force)
 	if(force == false){
 		ret = wifi_service_state_get(wifi_serv);
 		if(ret == PERIPH_SERVICE_STATE_RUNNING){
+			ESP_LOGI(TAG,"WIFI service running,needn't set!");
 			return JOSHVM_INVALID_STATE; 
 		}
 	}

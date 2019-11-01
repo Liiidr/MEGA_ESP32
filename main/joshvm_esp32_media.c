@@ -82,7 +82,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	if(run_one_time == 0){
 		run_one_time = 1;
 		printf(">>>-----------------------------------<<<\r\n");
-		printf("--->>>MEGA_ESP32 Version beta_v1.21*<<<---\r\n");
+		printf("--->>>MEGA_ESP32 Version beta_v1.22*<<<---\r\n");
 		printf(">>>-----------------------------------<<<\r\n");
 	}
 	int ret = JOSHVM_OK;	
@@ -209,6 +209,8 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				ret = audio_pipeline_run(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline);
 				break;
 			case AUDIO_TRACK:
+				handle->joshvm_media_u.joshvm_media_audiotrack.status = AUDIO_START;
+				handle->joshvm_media_u.joshvm_media_audiotrack.rb_callback_flag = NO_NEED_CB;
 				handle->joshvm_media_u.joshvm_media_audiotrack.callback = callback;
 				ret = joshvm_audio_track_init(handle);
 				que_val = QUE_TRACK_START;
@@ -295,6 +297,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			ESP_LOGI(TAG,"MediaRecorder stop!");
 			break;
 		case AUDIO_TRACK:	
+			handle->joshvm_media_u.joshvm_media_audiotrack.status = AUDIO_STOP;
 			que_val = QUE_TRACK_STOP;
 			xQueueSend(que, &que_val, (portTickType)0);
 			ESP_LOGI(TAG,"AudioTrack stop!");
@@ -415,7 +418,12 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 
 int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesWritten, void(*callback)(void*, int))
 {
-	return joshvm_audio_track_write(handle->joshvm_media_u.joshvm_media_audiotrack.track_rb,buffer,size,bytesWritten);
+	handle->joshvm_media_u.joshvm_media_audiotrack.rb_callback = callback;
+	uint8_t ret = joshvm_audio_track_write(handle->joshvm_media_u.joshvm_media_audiotrack.status,handle->joshvm_media_u.joshvm_media_audiotrack.track_rb,buffer,size,bytesWritten);
+	if(ret == JOSHVM_NOTIFY_LATER){
+		handle->joshvm_media_u.joshvm_media_audiotrack.rb_callback_flag = NEED_CB;
+	}
+	return ret;
 }
 
 int joshvm_esp32_media_flush(joshvm_media_t* handle)

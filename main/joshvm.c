@@ -117,8 +117,8 @@ void joshvm_app_init(void)
 	        vTaskDelay(10000 / portTICK_PERIOD_MS);
 	    }
 	    printf("Restarting now.\n");
-	    fflush(stdout);
-	    esp_restart();	  
+	    //fflush(stdout);
+	    //esp_restart();	  
 	}
 }
 

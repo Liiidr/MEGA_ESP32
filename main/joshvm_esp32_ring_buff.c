@@ -10,7 +10,6 @@
 
 void ring_buffer_init(ring_buffer_t *rb, int32_t buff_size)
 {
-	ESP_LOGI(TAG,"ring_buffer_init");
     rb->buffer = (int8_t*)audio_malloc(buff_size);
     memset(rb->buffer, 0, buff_size);
 
@@ -23,7 +22,6 @@ void ring_buffer_init(ring_buffer_t *rb, int32_t buff_size)
 
 void ring_buffer_deinit(ring_buffer_t *rb)
 {
-	ESP_LOGI(TAG,"ring_buffer_deinit");
     if (rb->buffer != NULL){
         audio_free(rb->buffer);
     }
@@ -73,14 +71,12 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 		rb->read_offset = rb->write_offset;
 		rb->valid_size = rb->total_size;	
 	}
-	printf("write rb valid_size = %d\n",rb->valid_size);
+	ESP_LOGI(TAG,"write rb valid_size = %d\n",rb->valid_size);
 	return written_size;
 }
 
 uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
 {
-	//ESP_LOGI(TAG,"ring_buffer_read");
-
     int32_t read_offset = rb->read_offset;
 	int32_t write_offset = rb->write_offset;
     int32_t total_size = rb->total_size;
@@ -104,10 +100,9 @@ uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
     rb->read_offset += size;
     rb->read_offset %= total_size;
     rb->valid_size -= size;
-	printf("read rb valid_size = %d\n",rb->valid_size);
+	//printf("read rb valid_size = %d\n",rb->valid_size);
 	return read_size;
 }
-
 
 void joshvm_rb_test(int8_t *buff,uint8_t size)
 {
