@@ -6,6 +6,9 @@
 //---define
 #define NEED_INIT 1
 #define NOT_INTI 0
+#define RB_NOT_COVER 0
+#define RB_COVER 1
+
 
 //---enum
 
@@ -63,10 +66,11 @@ void ring_buffer_flush(ring_buffer_t *rb);
  * @param 	buffer_to_write:the buffer wangted to be wrote into the rb
  *			size:the size wangted to be written into ring_buffer
  			rb:ring_buffer
+ 			cover_type:  0:don't cover old data  1:cover old data
  *
  * @return 	the truely size of wrote datas
  */
-uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb);
+uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb,uint8_t cover_type);
 
 /**
  * @brief 	read data form ring_buffer

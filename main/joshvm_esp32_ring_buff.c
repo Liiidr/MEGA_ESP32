@@ -37,7 +37,7 @@ void ring_buffer_flush(ring_buffer_t *rb)
 	rb->init_read_pointer = NOT_INTI;
 }
 
-uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb)
+uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb,uint8_t cover_type)
 {
 	//ESP_LOGI(TAG,"ring_buffer_write");
     int32_t write_offset = rb->write_offset;
@@ -46,6 +46,9 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 	uint32_t written_size = 0;
 
 	if(size + rb->valid_size > total_size){
+		if(RB_NOT_COVER == cover_type){
+			return 0;//written size is 0 byte
+		}
 		rb->init_read_pointer = NEED_INIT;	
 	}
 
@@ -70,7 +73,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 		rb->read_offset = rb->write_offset;
 		rb->valid_size = rb->total_size;	
 	}
-	//printf("write rb valid_size = %d\n",rb->valid_size);
+	printf("write rb valid_size = %d\n",rb->valid_size);
 	return written_size;
 }
 

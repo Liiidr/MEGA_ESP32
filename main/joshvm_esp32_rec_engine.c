@@ -95,6 +95,7 @@ static void rec_engine_task(void *handle)
 	vad_state_t last_vad_state = 0;
 	vad_state_t vad_state = 0;
 	int8_t vad_writer_buff_flag = 0;
+	uint32_t written_size = 0;
 	int16_t *buff = (int16_t *)malloc(audio_chunksize * sizeof(short));
 	if (NULL == buff) {
 		ESP_LOGE(TAG, "Memory allocation failed!");
@@ -168,7 +169,11 @@ static void rec_engine_task(void *handle)
 			}
 		
 			if(vad_writer_buff_flag){
-				ring_buffer_write(buff,audio_chunksize,joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
+				written_size = ring_buffer_write(buff,audio_chunksize,joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,RB_COVER);
+				if((written_size) && (NEED_CB == joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag)){
+					joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
+					joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback(joshvm_media,JOSHVM_OK);
+				}
 			}
 		}	
 
@@ -311,6 +316,7 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 	ESP_LOGI(TAG,"joshvm_esp32_vad_start");
 	joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_START;
+	joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
 	int8_t ret;
 	rec_engine.vad_off_time = VAD_OFF_TIME;
 	rec_engine.vad_callback = callback;

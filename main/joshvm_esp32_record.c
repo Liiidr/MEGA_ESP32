@@ -417,8 +417,7 @@ void joshvm_audio_track_task(void* handle)
 
 int joshvm_audio_track_write(ring_buffer_t* rb, unsigned char* buffer, int size, int* bytesWritten)
 {
-	//printf("write track_rb  valid_size = %d\n",handle->joshvm_media_u.joshvm_media_audiotrack.track_rb->valid_size);
-	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,rb);
+	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,rb,RB_NOT_COVER);
 	if(*bytesWritten >=0){
 		return JOSHVM_OK;
 	}else{
@@ -461,14 +460,21 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle)
 void joshvm_audio_recorder_task(void* handle)
 {
 	QueueHandle_t que = ((joshvm_media_t*)handle)->evt_que;
-	uint16_t que_val = 0;			
+	uint16_t que_val = 0;	
+	uint32_t written_size = 0;
+	uint8_t rb_callback_flag = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag;
+	void(*callback)(void*, int) = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.rb_callback;
 	ring_buffer_t* audio_recorder_rb = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.rec_rb;
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
 	audio_element_handle_t raw_rec = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader;    
 
 	while(1){	
 		raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-		ring_buffer_write(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_recorder_rb);
+		written_size = ring_buffer_write(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_recorder_rb,RB_COVER);
+		if((written_size) && (NEED_CB == rb_callback_flag)){
+			rb_callback_flag = NO_NEED_CB;
+			callback(handle,JOSHVM_OK);
+		}
 		xQueueReceive(que, &que_val, (portTickType)0);
 		if(que_val == QUE_RECORD_STOP){
 			break;

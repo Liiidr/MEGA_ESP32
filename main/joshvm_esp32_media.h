@@ -36,7 +36,9 @@ typedef enum{
 enum{
 	AUDIO_START = 0,
 	AUDIO_STOP,
-}joshvm_audio_status_e;
+	NO_NEED_CB,
+	NEED_CB,
+}joshvm_audio_rb_callback_status_e;
 
 
 //---
@@ -87,6 +89,8 @@ typedef struct{
 
 typedef struct{
 	uint8_t status;
+	uint8_t rb_callback_flag;
+	void(*rb_callback)(void*, int);
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
@@ -103,6 +107,8 @@ typedef struct{
 
 typedef struct{
 	uint8_t status;
+	uint8_t rb_callback_flag;
+	void(*rb_callback)(void*, int);
 	ring_buffer_t *rec_rb;
 
 }joshvm_media_audio_vad_rec_t;
