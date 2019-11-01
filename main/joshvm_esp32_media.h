@@ -109,7 +109,7 @@ typedef struct{
 }joshvm_media_audiorecorder_t;
 
 typedef struct{
-	uint8_t status;
+	uint8_t status;					//begin  & end record voice data 
 	uint8_t rb_callback_flag;
 	void(*rb_callback)(void*, int);
 	ring_buffer_t *rec_rb;

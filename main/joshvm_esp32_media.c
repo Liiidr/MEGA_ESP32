@@ -19,7 +19,7 @@
 //5*48*2*1000    48K*2CHA*5S = 16K*1CHA*60S 
 #define A_RECORD_RB_SIZE 48*10000
 #define A_TRACK_RB_SIZE 48*10000
-#define A_VAD_RB_SIZE 48*10000
+#define A_VAD_RB_SIZE 16*10000	//16K*1CHA*20S 
 //---variable
 static int8_t audio_status = 0;
 static struct{
@@ -120,7 +120,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 			ESP_LOGI(TAG,"AudioRecorder created!");
 			break;
 		case AUDIO_VAD_REC:
-			ring_buffer_init(&audio_vad_rb,JOSHVM_CYCLEBUF_BUFFER_SIZE);
+			ring_buffer_init(&audio_vad_rb,A_VAD_RB_SIZE);
 			joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb = &audio_vad_rb;
 			ESP_LOGI(TAG,"VAD AudioRecorder created!");
 			break;
@@ -157,8 +157,7 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			//joshvm_audio_rcorder_release(handle);
 			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb);
 			break;
-		case AUDIO_VAD_REC:
-			//joshvm_audio_rcorder_release(handle);
+		case AUDIO_VAD_REC:			
 			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
 			break;
 		default:
@@ -402,6 +401,10 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 			}
 			break;
 		case AUDIO_VAD_REC:
+			if(handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb == NULL){//
+				*bytesRead = 0;
+				ret = JOSHVM_OK;				
+			}				
 			handle->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback = callback;
 			ret = joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audio_vad_rec.status,\
 											 handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,buffer,size,bytesRead);
@@ -413,6 +416,7 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 			ret = JOSHVM_INVALID_ARGUMENT;
 			break;		
 	}
+	printf("***************-------*********************bytesread = %d,ret = %d\n",*bytesRead,ret);
 	return ret;
 }
 

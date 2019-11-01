@@ -142,9 +142,8 @@ static void rec_engine_task(void *handle)
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
-
-		//if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){	
-		if(rec_engine->vad_state != VAD_STOP){//XIUGAI PAUSE	
+	
+		if(rec_engine->vad_state != VAD_STOP){
 			vad_state = vad_process(vad_inst, buff);
 			
 			if(vad_state == VAD_SPEECH){
@@ -152,10 +151,11 @@ static void rec_engine_task(void *handle)
 				vad_off_time = 0;
 			}			
 			//vad stop		
-			//if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){
 			if((((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true))\
-				|| (rec_engine->vad_state == VAD_PAUSE)){//XIUGAI PAUSE
+				|| (rec_engine->vad_state == VAD_PAUSE)){
 				ESP_LOGI(TAG,"VAD_STOP");
+				rec_engine->vad_state = 0;//need xiugai 
+				joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_STOP;
 				need_notify_vad_stop = false;
 				rec_engine->vad_callback(1);
 				vad_writer_buff_flag = 0;
@@ -163,6 +163,7 @@ static void rec_engine_task(void *handle)
 			//detect voice 
 			if((vad_state != last_vad_state) && (vad_state == VAD_SPEECH) && (vad_writer_buff_flag == 0)){
 				ESP_LOGI(TAG,"VAD_START");
+				joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
 				last_vad_state = vad_state;
 				rec_engine->vad_callback(0);
 				vad_writer_buff_flag = 1;				
@@ -175,6 +176,7 @@ static void rec_engine_task(void *handle)
 				written_size = ring_buffer_write(buff,audio_chunksize,joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,RB_COVER);
 				if((written_size) && (NEED_CB == joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag)){
 					joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
+					ESP_LOGE(TAG,"rb_callback_flag = NEED_CB");
 					joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback(joshvm_media,JOSHVM_OK);
 				}
 			}
@@ -236,7 +238,7 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 	}
 
 	if((wakeup_state == WAKEUP_ENABLE) || (vad_state == VAD_START)){
-		ESP_LOGI(TAG,"rec_engine have create!");
+		ESP_LOGI(TAG,"rec_engine have created!");
 		return JOSHVM_OK;
 	}	
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
@@ -318,8 +320,9 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 	}
 
 	ESP_LOGI(TAG,"joshvm_esp32_vad_start");
-	joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_START;
-	joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
+	ring_buffer_flush(joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
+	printf("vad ringbuffer data valid size = %d\n",joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
+	joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_START;	
 	int8_t ret;
 	rec_engine.vad_off_time = VAD_OFF_TIME;
 	rec_engine.vad_callback = callback;
@@ -348,7 +351,6 @@ int joshvm_esp32_vad_stop()
 	}
 
 	ESP_LOGI(TAG, " joshvm_esp32_vad_stop"); 	
-	joshvm_media->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_STOP;
 	joshvm_rec_engine_destroy(&rec_engine,VAD_STOP);
 	return JOSHVM_OK;
 }

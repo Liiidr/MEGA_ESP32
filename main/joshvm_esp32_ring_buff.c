@@ -43,6 +43,11 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
     int32_t first_write_size = 0;
 	uint32_t written_size = 0;
 
+	if(rb == NULL){
+		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
+		return -1;
+	}
+
 	if(size + rb->valid_size > total_size){
 		if(RB_NOT_COVER == cover_type){
 			return 0;//written size is 0 byte
@@ -83,6 +88,11 @@ uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
     int32_t first_read_size = 0;
 	uint32_t read_size = 0;//real size of data have been read
 
+	if(rb == NULL){
+		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
+		return -1;
+	}
+	
     if (size > rb->valid_size){
 		size = rb->valid_size;	
     }
