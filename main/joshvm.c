@@ -81,21 +81,21 @@ void joshvm_app_init(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
-	MegaBoard_handle = audio_board_init();
-	audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+	//MegaBoard_handle = audio_board_init();
+	//audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
 	//esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
 	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
-    //app_sdcard_init();
+    app_sdcard_init();
 	app_wifi_service();
 	joshvm_vad_timer();
 
 
 	
-	/*
+
 	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-	printf("Main task Executing on core : %d\n",xPortGetCoreID());
+	/*	printf("Main task Executing on core : %d\n",xPortGetCoreID());
 
 	static char buf[1024];
 	vTaskGetRunTimeStats(buf);
@@ -103,16 +103,26 @@ void joshvm_app_init(void)
 	vTaskList(buf);
 	printf("JOSHVM_Audio,Task List:\nTask Name	 Status   Prio	  HWM	 Task Number\n%s\n", buf);
 	*/
-	vTaskDelay(1000);
+	vTaskDelay(500);
 
 	while (1) {
-
-		
+		/*
+		printf("MALLOC_CAP_DEFAULT\n");
+		heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
+		printf("MALLOC_CAP_8BIT\n");
+		heap_caps_print_heap_info(MALLOC_CAP_8BIT);
+		printf("MALLOC_CAP_INTERNAL\n");
+		heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
+		printf("MALLOC_CAP_SPIRAM\n");
+		heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
+		printf("\n");
+*/
 		pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
-		//test_esp32_media();
-  		JavaTask(); 
-		//JavaNativeTest();		
-	
+		test_esp32_media();
+  		//JavaTask(); 
+		//JavaNativeTest();	
+		//extern void fun_test();
+		//fun_test();
 	
 		
 		for (int i = 10; i >= 0; i--) {
@@ -134,16 +144,11 @@ int esp32_playback_voice(int i) {
 	int player_volume = 0;
 	switch(i){
 	case 0:
-		//t = joshvm_audio_play_handler(AMR_STREAM_MP3_URI);
-		//display_service_set_pattern(disp_serv, DISPLAY_PATTERN_TURN_ON, 0);
 		javanotify_simplespeech_event(2, 0);
 		return 0;
 	break;
 	case 1:
-		//display_service_set_pattern(disp_serv, DISPLAY_PATTERN_TURN_OFF, 0);
 		javanotify_simplespeech_event(2, 0);
-		//joshvm_spiffs_audio_play_handler(AMR_STREAM_MP3_URI);
-		//ret = joshvm_audio_play_handler(AMR_STREAM_MP3_URI);
 		return 0;
 	break;
 	case 2:
@@ -171,9 +176,7 @@ int esp32_playback_voice(int i) {
 		javanotify_simplespeech_event(2, 0);
 		return 0;
 	case 4:
-
-		joshvm_spiffs_audio_play_handler(MP3_STREAM_URI);
-		
+		joshvm_spiffs_audio_play_handler(MP3_STREAM_URI);		
 		return 0;
 	case 5:
 

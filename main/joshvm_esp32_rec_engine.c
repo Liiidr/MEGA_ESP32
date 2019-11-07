@@ -34,6 +34,15 @@
 #include "recorder_engine.h"
 extern UBaseType_t pvCreatedTask_vadtask;//test
 
+//---define
+#define VAD_SAMPLE_RATE_HZ 16000
+#define VAD_FRAME_LENGTH_MS 30
+#define VAD_BUFFER_LENGTH (VAD_FRAME_LENGTH_MS * VAD_SAMPLE_RATE_HZ / 1000)
+#define VAD_OFF_TIME 800
+#define pause_resume_flag_resume 0
+#define pause_resume_flag_pause 1
+
+
 //---enum
 typedef enum {
     WAKE_UP = 1,
@@ -55,7 +64,8 @@ typedef enum{
 }rec_event_tpye_e;
 
 typedef enum{
-	WAKEUP_ENABLE  = 1,
+	STATE_NULL = 0,
+	WAKEUP_ENABLE,
 	WAKEUP_DISABLE,
 	VAD_START,
 	VAD_PAUSE,
@@ -67,6 +77,7 @@ typedef enum{
 typedef struct{
 	int8_t wakeup_state;
 	int8_t vad_state;
+	int8_t pause_resume_flag;
 	uint32_t vad_off_time;
 	void(*wakeup_callback)(int);//notify jvm
 	void(*vad_callback)(int);//notify jvm
@@ -74,20 +85,19 @@ typedef struct{
 
 //---variable
 static const char *TAG = "JOSHVM_REC_ENGINE>>>>>>>";
-rec_engine_t rec_engine  = {WAKEUP_DISABLE,VAD_STOP,1000,NULL,NULL};
+rec_engine_t rec_engine  = {WAKEUP_DISABLE,VAD_STOP,pause_resume_flag_resume,1000,NULL,NULL};
 static int8_t need_notify_vad_stop = false;
-uint32_t vad_off_time = 0;
+static uint16_t que_val = 0;
 static int8_t task_run =1;
+static QueueHandle_t vad_que = NULL;
 extern joshvm_media_t *joshvm_media_vad;
+uint32_t vad_off_time = 0;
 
-//---define
-#define VAD_SAMPLE_RATE_HZ 16000
-#define VAD_FRAME_LENGTH_MS 30
-#define VAD_BUFFER_LENGTH (VAD_FRAME_LENGTH_MS * VAD_SAMPLE_RATE_HZ / 1000)
-#define VAD_OFF_TIME 800
+
 
 static void rec_engine_task(void *handle)
 {
+	vad_que = xQueueCreate(4, sizeof(uint16_t));	
 	const esp_sr_iface_t *model = &esp_sr_wakenet5_quantized;
 	model_iface_data_t *iface = model->create(DET_MODE_90);
 	int audio_chunksize = model->get_samp_chunksize(iface);
@@ -115,7 +125,9 @@ static void rec_engine_task(void *handle)
 	i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
 	i2s_cfg.i2s_config.sample_rate = 48000;
 	i2s_cfg.type = AUDIO_STREAM_READER;
-#if defined CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+//#if defined CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+#if defined CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+
 	i2s_cfg.i2s_port = 1;
 #endif
 	i2s_stream_reader = i2s_stream_init(&i2s_cfg);
@@ -144,35 +156,32 @@ static void rec_engine_task(void *handle)
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
 	
-		if(rec_engine->vad_state != VAD_STOP){
+		if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){
 			vad_state = vad_process(vad_inst, buff);
 			
-			if(vad_state == VAD_SPEECH){
-				//clear timer,vad_off_time increase 1 per 200ms
+			//clear timer,vad_off_time increase 1 per 200ms
+			if(vad_state == VAD_SPEECH){				
 				vad_off_time = 0;
 			}			
-			//vad stop		
-			if((((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true))\
-				|| (rec_engine->vad_state == VAD_PAUSE)){
-				ESP_LOGI(TAG,"VAD_STOP");
-				rec_engine->vad_state = 0;//need xiugai 
-				joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_STOP;
-				need_notify_vad_stop = false;
-				rec_engine->vad_callback(1);
-				vad_writer_buff_flag = 0;
-			}				
+				
 			//detect voice 
 			if((vad_state != last_vad_state) && (vad_state == VAD_SPEECH) && (vad_writer_buff_flag == 0)){
-				ESP_LOGI(TAG,"VAD_START");
-				joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
-				last_vad_state = vad_state;
-				rec_engine->vad_callback(0);
-				vad_writer_buff_flag = 1;				
+				que_val = VAD_START;
+				xQueueSend(vad_que, &que_val, portMAX_DELAY);				
+				last_vad_state = vad_state;	
+				vad_writer_buff_flag = 1;	
+				joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;//init
 			}else if((vad_state != last_vad_state) && (vad_state == VAD_SILENCE)){
 				last_vad_state = vad_state;
 				need_notify_vad_stop = true;
 			}
-		
+			//vad stop		
+			if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){				
+				ESP_LOGI(TAG,"vad_off_time = %d,need_notify_vad_stop = %d,rec_engine->vad_state = %d",vad_off_time * 200,need_notify_vad_stop,rec_engine->vad_state);
+				que_val = VAD_STOP;
+				xQueueSend(vad_que, &que_val, portMAX_DELAY);				
+			}
+			//save voice data
 			if(vad_writer_buff_flag){
 				written_size = ring_buffer_write(buff,audio_chunksize,joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,RB_COVER);
 				if((written_size) && (NEED_CB == joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag)){
@@ -180,14 +189,56 @@ static void rec_engine_task(void *handle)
 					joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback(joshvm_media_vad,JOSHVM_OK);
 				}
 			}
-		}	
+		}
+
+		xQueueReceive(vad_que, &que_val, 0);
+		if(que_val == VAD_START){
+			ESP_LOGI(TAG,"VAD_START");
+			que_val = STATE_NULL;
+			xQueueSend(vad_que, &que_val, portMAX_DELAY);
+			rec_engine->vad_callback(0);			
+			
+		}else if(que_val == VAD_PAUSE){
+			if(need_notify_vad_stop == true){
+				ESP_LOGI(TAG,"VAD_PAUSE");
+				que_val = STATE_NULL;
+				xQueueSend(vad_que, &que_val, portMAX_DELAY);
+				rec_engine->vad_callback(1);				
+				need_notify_vad_stop = false;
+				vad_writer_buff_flag = 0;
+			}else if(need_notify_vad_stop == false){
+				ESP_LOGI(TAG,"VAD_PAUSE,but vad has stopped");
+				que_val = STATE_NULL;
+				xQueueSend(vad_que, &que_val, portMAX_DELAY);
+			}			
+		}else if(que_val == VAD_RESUME){
+			ESP_LOGI(TAG,"VAD_RESUME");
+			rec_engine->vad_state = VAD_RESUME;
+			que_val = STATE_NULL;
+			xQueueSend(vad_que, &que_val, portMAX_DELAY);
+			
+		}else if(que_val == VAD_STOP){
+			ESP_LOGI(TAG,"VAD_STOP");
+			que_val = STATE_NULL;
+			xQueueSend(vad_que, &que_val, portMAX_DELAY);
+			rec_engine->vad_callback(1);
+			joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_STOP;
+			need_notify_vad_stop = false;	
+			vad_writer_buff_flag = 0;	
+			
+		}		
 
 		if(rec_engine->wakeup_state == WAKEUP_ENABLE){
 			int keyword = model->detect(iface, (int16_t *)buff);
 			switch (keyword) {
 				case WAKE_UP:
 					ESP_LOGI(TAG, "Wake up");					
-					printf("********************************vad task free stack :				%d\n",pvCreatedTask_vadtask);
+					//printf("vad task free stack :				%d\n",pvCreatedTask_vadtask);
+				
+					//printf("xPortGetMinimumEverFreeHeapSize :   %d\n",xPortGetMinimumEverFreeHeapSize());
+					//extern void joshvm_spiffs_audio_play_handler(const char *url);
+					//joshvm_spiffs_audio_play_handler("/userdata/ding.mp3");
+				
 					if(rec_engine->wakeup_callback != NULL){
 						rec_engine->wakeup_callback(0);
 					}
@@ -219,6 +270,10 @@ static void rec_engine_task(void *handle)
 	model = NULL;
 	free(buff);
 	buff = NULL;	
+	if(vad_que != NULL){
+		vQueueDelete(vad_que);
+		vad_que = NULL;
+	}	
 	vTaskDelete(NULL);
 }
 
@@ -234,6 +289,7 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 		break;
 		case VAD_START:
 			rec_engine->vad_state = VAD_START;
+			rec_engine->pause_resume_flag = pause_resume_flag_resume;//init this flag every vadstart for pause 
 		break;
 		default :
 
@@ -322,6 +378,11 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 		return JOSHVM_INVALID_STATE;
 	}
 
+	if(joshvm_media_vad == NULL){
+		ESP_LOGI(TAG,"Vad obj have't created!");
+		return JOSHVM_FAIL;
+	}
+
 	ESP_LOGI(TAG,"joshvm_esp32_vad_start");
 	ring_buffer_flush(joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
 	printf("vad ringbuffer data valid size = %d\n",joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
@@ -336,13 +397,26 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 int joshvm_esp32_vad_pause()
 {
-	rec_engine.vad_state = VAD_PAUSE;
+	printf("joshvm_esp32_vad_pause-------------\n");
+
+	if(rec_engine.pause_resume_flag == pause_resume_flag_resume){
+		rec_engine.pause_resume_flag = pause_resume_flag_pause;
+		rec_engine.vad_state = VAD_PAUSE;
+		que_val = VAD_PAUSE;
+		xQueueSend(vad_que, &que_val, portMAX_DELAY);
+	}
 	return JOSHVM_OK;
 }
 
 int joshvm_esp32_vad_resume()
 {
-	rec_engine.vad_state = VAD_RESUME;
+	printf("joshvm_esp32_vad_resume-----------------\n");
+	if(rec_engine.pause_resume_flag == pause_resume_flag_pause){
+		rec_engine.pause_resume_flag = pause_resume_flag_resume;
+		rec_engine.vad_state = VAD_RESUME;
+		que_val = VAD_RESUME;
+		xQueueSend(vad_que, &que_val, portMAX_DELAY);
+	}
 	return JOSHVM_OK;
 }
 

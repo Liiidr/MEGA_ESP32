@@ -104,8 +104,8 @@ static esp_err_t rsp_filter_set_dest_info(audio_element_handle_t self, int dest_
 static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type)
 {
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
-	//#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
-	#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+	#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+	//#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 		if(AUDIO_STREAM_READER == type)i2s_cfg.i2s_port = 1;		
 	#endif
     i2s_cfg.i2s_config.use_apll = 0;
@@ -289,7 +289,7 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 	audio_pipeline_breakup_elements(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline,\
 									handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer);
 	audio_pipeline_relink(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline, \
-		(const char *[]) {"i2s","resample","encode","fatfs"}, 4);
+		(const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","fatfs_media_rec"}, 4);
 	ESP_LOGI(TAG,"Prepare url:%s,ret=%d",handle->joshvm_media_u.joshvm_media_mediarecorder.url,ret);
 	
 	return JOSHVM_OK;

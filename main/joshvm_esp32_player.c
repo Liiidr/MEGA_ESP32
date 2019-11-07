@@ -65,7 +65,7 @@ typedef struct{
 }esp_audio_state_task_t;
 
 extern void javanotify_simplespeech_event(int, int);
-static void joshvm_spiffs_audio_play_init(void);
+static void joshvm_spiffs_audio_play_init(joshvm_media_t *handle);
 
 static void esp_audio_state_task (void *para)
 {
@@ -75,13 +75,13 @@ static void esp_audio_state_task (void *para)
     while (1) {
         xQueueReceive(que, &esp_state, portMAX_DELAY);
         ESP_LOGI(TAG, "esp_auido status:%x,err:%x", esp_state.status, esp_state.err_msg);
-        if ((esp_state.status == 3)//AUDIO_STATUS_STOPED)
+        if ((esp_state.status == AUDIO_STATUS_STOPED)
             || (esp_state.status == AUDIO_STATUS_FINISHED)
             || (esp_state.status == AUDIO_STATUS_ERROR)) {
 
 			//javanotify_simplespeech_event(2, 0);
 			joshvm_esp32_media_callback(handle);
-			break;//???
+			//break;//???
         } 
     }
 	vQueueDelete(que);
@@ -145,15 +145,15 @@ static void setup_player(joshvm_media_t* handle)
 
     // Add decoders and encoders to esp_audio
     wav_decoder_cfg_t wav_dec_cfg = DEFAULT_WAV_DECODER_CONFIG();
-	amr_decoder_cfg_t amr_dec_cfg = DEFAULT_AMR_DECODER_CONFIG();
-    amr_dec_cfg.task_core = 1;
+	//amr_decoder_cfg_t amr_dec_cfg = DEFAULT_AMR_DECODER_CONFIG();
+    //amr_dec_cfg.task_core = 1;
     mp3_decoder_cfg_t mp3_dec_cfg = DEFAULT_MP3_DECODER_CONFIG();
     mp3_dec_cfg.task_core = 1;
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
     aac_cfg.task_core = 1;
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, aac_decoder_init(&aac_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, wav_decoder_init(&wav_dec_cfg));
-	esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, amr_decoder_init(&amr_dec_cfg));
+	//esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, amr_decoder_init(&amr_dec_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, mp3_decoder_init(&mp3_dec_cfg));
 
     audio_element_handle_t m4a_dec_cfg = aac_decoder_init(&aac_cfg);
@@ -165,7 +165,8 @@ static void setup_player(joshvm_media_t* handle)
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, ts_dec_cfg);
 
     // Set default volume
-    esp_audio_vol_set(player, 50);
+    //esp_audio_vol_set(player, 50);
+    audio_hal_set_volume(MegaBoard_handle->audio_hal,60);
     AUDIO_MEM_SHOW(TAG);
     ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
@@ -173,13 +174,13 @@ static void setup_player(joshvm_media_t* handle)
 void joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
     setup_player(handle);
-	joshvm_spiffs_audio_play_init();
+	joshvm_spiffs_audio_play_init(handle);
 }
 
 void joshvm_audio_player_destroy()
 {
+	
 	esp_audio_destroy(player);
-	//vTaskDelete( esp_audio_state_task_handler);
 }
 
 int joshvm_audio_play_handler(const char *url)
@@ -190,7 +191,7 @@ int joshvm_audio_play_handler(const char *url)
 	return ret;
 }
 
-static void joshvm_audio_state_task (void *para)
+static void joshvm_audio_state_task (void *handle)
 {
 	audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
     audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
@@ -210,8 +211,8 @@ static void joshvm_audio_state_task (void *para)
             && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))) {
             ESP_LOGI(TAG, "[ * ] bing end!");
 			audio_pipeline_terminate(pipeline);	
-			javanotify_simplespeech_event(2, 0);
-            break;//???
+			joshvm_esp32_media_callback(handle);
+            //break;//???
         }
 	}
     audio_pipeline_terminate(pipeline);
@@ -231,7 +232,7 @@ static void joshvm_audio_state_task (void *para)
     vTaskDelete(NULL);
 }
 
-static void joshvm_spiffs_audio_play_init(void)
+static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
 {
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
 	pipeline = audio_pipeline_init(&pipeline_cfg);
@@ -265,23 +266,14 @@ static void joshvm_spiffs_audio_play_init(void)
 	
 	audio_pipeline_link(pipeline, (const char *[]) {"file_reader", "mp3_decoder", "filter_upsample", "i2s_writer"}, 4);
 
-	//extern xTaskHandle pvCreatedTask_player_task_2;
-	//joshvm_audio_state_task_stack = (StackType_t*)audio_calloc(1,JOSHVM_AUDIO_STATE_TASK_SIZE);
-	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, NULL, JOSHVM_AUDIO_STATE_TASK_PRI, NULL);
-	/*joshvm_audio_state_task_handler = xTaskCreateStaticPinnedToCore((TaskFunction_t) 		joshvm_audio_state_task,
-														(const char *) 	 		"joshvm_audio_state_task",
-														(const uint32_t)		JOSHVM_AUDIO_STATE_TASK_SIZE,
-														(void * const) 			NULL,
-														(UBaseType_t) 			1, 
-														(StackType_t *) 		joshvm_audio_state_task_stack,
-														(StaticTask_t *) 		&joshvm_audio_state_task_TCB,
-														(BaseType_t) 			tskNO_AFFINITY);*/
+	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, handle, JOSHVM_AUDIO_STATE_TASK_PRI, NULL);
 }
 
 void joshvm_spiffs_audio_play_handler(const char *url)
 {
 	audio_element_set_uri(spiffs_stream, url);
-    audio_pipeline_run(pipeline);
+    int ret = audio_pipeline_run(pipeline);
+	printf("//////////************** ret = %d\n",ret);
 }
 
 void joshvm_spiffs_audio_stop_handler(void)
@@ -323,7 +315,10 @@ audio_err_t joshvm_audio_stop_handler(void)
 int joshvm_audio_get_state()
 {
     esp_audio_state_t st = {0};
-    esp_audio_state_get(player, &st);
+	if(player == NULL){
+    	return JOSHVM_MEDIA_STOPPED;
+	}
+	esp_audio_state_get(player, &st);
     return st.status;
 }
 

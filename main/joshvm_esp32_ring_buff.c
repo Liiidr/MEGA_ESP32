@@ -83,7 +83,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
 {
     int32_t read_offset = rb->read_offset;
-	int32_t write_offset = rb->write_offset;
+	//int32_t write_offset = rb->write_offset;
     int32_t total_size = rb->total_size;
     int32_t first_read_size = 0;
 	uint32_t read_size = 0;//real size of data have been read
@@ -92,7 +92,6 @@ uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
 		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
 		return -1;
 	}
-	
     if (size > rb->valid_size){
 		size = rb->valid_size;	
     }

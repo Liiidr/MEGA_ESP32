@@ -45,7 +45,6 @@ enum{
 
 //---
 typedef struct{
-	uint8_t object_created_status;
 	char *url;						//dataSource
 	//mediaplayer_callback callback;
 	void(*callback)(void*, int);
@@ -57,7 +56,6 @@ typedef struct{
 }joshvm_media_mediaplayer_t;
 
 typedef struct{
-	uint8_t object_created_status;
 	int format;
 	char *url;	
 	uint32_t sample_rate;
@@ -74,7 +72,6 @@ typedef struct{
 }joshvm_media_mediarecorder_t;
 
 typedef struct{
-	uint8_t object_created_status;
 	uint8_t status;
 	uint8_t rb_callback_flag;
 	void(*rb_callback)(void*, int);
@@ -94,7 +91,6 @@ typedef struct{
 }joshvm_media_audiotrack_t;
 
 typedef struct{
-	uint8_t object_created_status;
 	uint8_t status;
 	uint8_t rb_callback_flag;
 	void(*rb_callback)(void*, int);
@@ -113,7 +109,6 @@ typedef struct{
 }joshvm_media_audiorecorder_t;
 
 typedef struct{
-	uint8_t object_created_status;
 	uint8_t status;					//begin  & end record voice data 
 	uint8_t rb_callback_flag;
 	void(*rb_callback)(void*, int);

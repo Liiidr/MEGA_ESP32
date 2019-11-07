@@ -1,0 +1,18 @@
+1、http element task create err，偶现
+     出现条件：
+      	唤醒、断句、询问天气，mediaplayer播放url，在mediaplayer创建http task时
+
+
+2、出现 [0;31mE (17877) I2S: Register I2S Interrupt error  ， reboot ，必现
+     出现条件：
+	mediarecorder  josh.wav 之后 通过mediaplayer 播放josh.wav时
+	audiorecorder录音之后，通过audiotrack播放时
+
+
+3、播放提示音出错
+     pipeline_run 报错
+
+
+
+1、mediaplayer 播放的时候复位			已解决，原因 每次播放结束时执行break，
+2、mediarecorder stop的时候连续报warring  ---	更换ADF解决
