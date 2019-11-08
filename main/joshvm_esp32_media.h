@@ -13,7 +13,6 @@
 
 
 
-
 //---enum
 typedef enum{
 	JOSHVM_OK 				= 0,
@@ -132,7 +131,9 @@ typedef struct {
 
 
 //---fun
-void joshvm_esp32_media_callback(joshvm_media_t *handle);
+void joshvm_esp32_media_callback(joshvm_media_t *handle,joshvm_err_t errcode);
+
+joshvm_err_t joshvm_mep32_board_init(void);
 
 /**
  * @brief Create 
@@ -445,8 +446,8 @@ int joshvm_esp32_media_set_volume(int volume);
 int joshvm_esp32_media_add_volume();
 int joshvm_esp32_media_sub_volume();
 
-void test_esp32_media(void);
-int joshvm_esp32_media_release(void* handle);
+
+//int joshvm_esp32_media_release(void* handle);
 
 
 

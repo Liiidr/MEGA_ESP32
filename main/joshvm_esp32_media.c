@@ -52,51 +52,44 @@ static uint8_t m_rec_obj_created_status = 0;
 static uint8_t a_track_obj_created_status = 0;
 static uint8_t a_rec_obj_created_status = 0;
 static uint8_t a_vad_obj_created_status = 0;
-
-//------------------test--start-----------------
-void *handle_media_rec_test = NULL;
-static void *handle_media_player_test = NULL;
-void *handle_track_test = NULL;
-void *handle_recorder_test = NULL;
+uint8_t wakeup_obj_created_status = 0;
 
 
-#define MP3_URI_TEST "file://sdcard/48000.wav"
-
-static void media_player_callback_test(void*handle,int para)
-{
-	ESP_LOGI(TAG,"media_player_callback");
-}
-
-
-//------------------test--end-----------------
-//留给播放结束的回调
-void joshvm_esp32_media_callback(joshvm_media_t * handle)
+void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_callback");
 
 	//audio_status = JOSHVM_MEDIA_RESERVE;
-	handle->joshvm_media_u.joshvm_media_mediaplayer.callback(handle,0);//need to rewrite
+	handle->joshvm_media_u.joshvm_media_mediaplayer.callback(handle,errcode);
 }
 
 static ring_buffer_t audio_recorder_rb;
 static ring_buffer_t audio_track_rb;
 static ring_buffer_t audio_vad_rb;
 static uint8_t run_one_time = 0;
-static int8_t create_cnt = 0;//count created obj 
+int8_t create_cnt = 0;//count created obj 
 extern audio_board_handle_t MegaBoard_handle;
 
+joshvm_err_t joshvm_mep32_board_init(void)
+{
+	ESP_LOGI(TAG,"Init Board!");
+	MegaBoard_handle = audio_board_init();
+	int ret = audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+	if(ret == ESP_OK){
+		return JOSHVM_OK;
+	}
+	return JOSHVM_FAIL;
+}
 
 int joshvm_esp32_media_create(int type, void** handle)
 {
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("--->>>MEGA_ESP32 Version beta_v1.27>>>---\r\n");		
+		printf("--->>>MEGA_ESP32 Version beta_v1.28>>>---\r\n");		
 	}
 
 	if(create_cnt == 0){
-		ESP_LOGI(TAG,"Init Board!");
-		MegaBoard_handle = audio_board_init();
-		audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+		joshvm_mep32_board_init();
 	}
 	
 	int ret = JOSHVM_OK;
@@ -270,7 +263,8 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 		&& (m_rec_obj_created_status == OBJ_CREATED_NOT)\
 		&& (a_track_obj_created_status == OBJ_CREATED_NOT)\
 		&& (a_rec_obj_created_status == OBJ_CREATED_NOT)\
-		&& (a_vad_obj_created_status == OBJ_CREATED_NOT)){
+		&& (a_vad_obj_created_status == OBJ_CREATED_NOT)\
+		&& (wakeup_obj_created_status == OBJ_CREATED_NOT)){
 		create_cnt = 0;
 		audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_STOP);
 		audio_hal_deinit(MegaBoard_handle);		
@@ -791,102 +785,6 @@ int joshvm_esp32_media_sub_volume()
 int joshvm_esp32_media_release(void* handle)
 {
 	return 0;
-}
-
-int volume;
-void test_esp32_media(void)
-{
-
-/*//---wakeup test
-	joshvm_esp32_wakeup_enable(media_player_callback_test);
-
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
-
-	
-	joshvm_esp32_wakeup_enable(media_player_callback_test);
-
-*/
-
-	
-
-
-	joshvm_esp32_media_create(0,&handle_media_player_test);
-
-	joshvm_esp32_media_create(1,&handle_media_rec_test);
-	//joshvm_esp32_media_create(2,&handle_track_test);
-	//joshvm_esp32_media_create(3,&handle_recorder_test);
-	//joshvm_esp32_vad_start(test_vad_callback);
-
-
-
-//RECORDER
-	joshvm_esp32_media_set_output_file(handle_media_rec_test,"/sdcard/default55.wav");
-	joshvm_esp32_media_set_audio_sample_rate(handle_media_rec_test,16000);
-	joshvm_esp32_media_set_channel_config(handle_media_rec_test,1);
-	joshvm_esp32_media_prepare(handle_media_rec_test,NULL);
-	joshvm_esp32_media_start(handle_media_rec_test,media_player_callback_test);
-
-	vTaskDelay(10000 / portTICK_PERIOD_MS);
-	joshvm_esp32_media_stop(handle_media_rec_test);
-	vTaskDelay(3000 / portTICK_PERIOD_MS); 
-
-	joshvm_esp32_media_close(handle_media_rec_test);
-
-
-/*	//audio_track  audio_recorder
-
-	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
-	joshvm_esp32_media_stop(handle_recorder_test);
-
-	//joshvm_esp32_vad_stop();
-
-	//joshvm_esp32_wakeup_disable();
-
-	//joshvm_esp32_vad_stop();
-
-
-	((joshvm_media_t*)handle_track_test)->joshvm_media_u.joshvm_media_audiotrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->joshvm_media_u.joshvm_media_audiorecorder.rec_rb;
-
-
-	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
-
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
-	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
-	joshvm_esp32_media_stop(handle_track_test);
-*/
-
-/*
-	vTaskDelay(2000 / portTICK_PERIOD_MS); 
-	joshvm_esp32_vad_start(test_vad_callback);
-	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-
-
-	joshvm_esp32_media_start(handle_player_test,media_player_callback_test);
-	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_player_test)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
-	joshvm_esp32_media_stop(handle_player_test);
-
-*/	
-
-	joshvm_esp32_media_set_source(handle_media_player_test,"/sdcard/default55.wav");
-	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
-	//vTaskDelay(10000 / portTICK_PERIOD_MS);
-	//joshvm_esp32_media_stop(handle_media_player_test);
-	//vTaskDelay(1000 / portTICK_PERIOD_MS); 
-/*
-	joshvm_esp32_media_set_output_file(handle_media_player_test,"/sdcard/16000.wav");
-	joshvm_esp32_media_set_audio_sample_rate(handle_media_player_test,16000);
-	joshvm_esp32_media_set_channel_config(handle_media_player_test,1);
-	joshvm_esp32_media_prepare(handle_media_player_test,NULL);
-	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
-
-	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-
-	joshvm_esp32_media_stop(handle_media_player_test);
-	
-	joshvm_esp32_media_release(handle_media_player_test);
-*/
 }
 
 

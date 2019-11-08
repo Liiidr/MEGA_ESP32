@@ -42,7 +42,6 @@ extern UBaseType_t pvCreatedTask_vadtask;//test
 #define pause_resume_flag_resume 0
 #define pause_resume_flag_pause 1
 
-
 //---enum
 typedef enum {
     WAKE_UP = 1,
@@ -91,15 +90,16 @@ static uint16_t que_val = 0;
 static int8_t task_run =1;
 static QueueHandle_t vad_que = NULL;
 extern joshvm_media_t *joshvm_media_vad;
+extern uint8_t wakeup_obj_created_status;
 uint32_t vad_off_time = 0;
-
-
 
 static void rec_engine_task(void *handle)
 {
 	vad_que = xQueueCreate(4, sizeof(uint16_t));	
 	const esp_sr_iface_t *model = &esp_sr_wakenet5_quantized;
+	//ESP_LOGE(TAG,"before wakeup free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	model_iface_data_t *iface = model->create(DET_MODE_90);
+	//ESP_LOGE(TAG,"after wakeup free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	int audio_chunksize = model->get_samp_chunksize(iface);
 	audio_chunksize = audio_chunksize * sizeof(short);
 	rec_engine_t* rec_engine = (rec_engine_t*)handle;
@@ -151,7 +151,9 @@ static void rec_engine_task(void *handle)
 	audio_pipeline_register(pipeline, raw_read, "raw_rec_engine");
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
 	audio_pipeline_run(pipeline);
+	//ESP_LOGE(TAG,"before vad free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	vad_handle_t vad_inst = vad_create(VAD_MODE_3, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
+	//ESP_LOGE(TAG,"afre vad free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
@@ -224,8 +226,7 @@ static void rec_engine_task(void *handle)
 			rec_engine->vad_callback(1);
 			joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_STOP;
 			need_notify_vad_stop = false;	
-			vad_writer_buff_flag = 0;	
-			
+			vad_writer_buff_flag = 0;			
 		}		
 
 		if(rec_engine->wakeup_state == WAKEUP_ENABLE){
@@ -279,6 +280,7 @@ static void rec_engine_task(void *handle)
 
 static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e type)
 {
+	//ESP_LOGE(TAG,"joshvm_rec_engine_create free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	int8_t wakeup_state,vad_state;
 	wakeup_state = rec_engine->wakeup_state;
 	vad_state = rec_engine->vad_state;
@@ -301,7 +303,6 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 		return JOSHVM_OK;
 	}	
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
-
 	return 0;
 }
 
@@ -345,28 +346,39 @@ int joshvm_esp32_wakeup_get_word(int pos, int* index, char* wordbuf, int wordlen
 
 int joshvm_esp32_wakeup_enable(void(*callback)(int))
 {
+	int8_t ret;
+	extern int8_t create_cnt;
+
     if(rec_engine.wakeup_state == WAKEUP_ENABLE){
 		ESP_LOGW(TAG,"wakeup has already enable");
 		return JOSHVM_INVALID_STATE;
 	}
 
-	int8_t ret;
+	wakeup_obj_created_status = OBJ_CREATED;
+	if(create_cnt == 0){
+		if(joshvm_mep32_board_init() != JOSHVM_OK){
+			return JOSHVM_FAIL;
+		}
+		create_cnt++;
+	}
+	
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_enable");
 	rec_engine.wakeup_callback = callback;
 	ret = joshvm_rec_engine_create(&rec_engine,WAKEUP_ENABLE);
 
 	return ret;
-
 }
 
 int joshvm_esp32_wakeup_disable()
 {
+	int8_t ret;
     if(rec_engine.wakeup_state == WAKEUP_DISABLE){
 		ESP_LOGW(TAG,"Can't disable wakeup when have not enable");
 		return JOSHVM_INVALID_STATE;
 	}
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_disable");
-	int8_t ret;
+
+	wakeup_obj_created_status = OBJ_CREATED_NOT;
 	ret = joshvm_rec_engine_destroy(&rec_engine,WAKEUP_DISABLE);		
 	return ret;
 }
@@ -436,29 +448,5 @@ int joshvm_esp32_vad_set_timeout(int ms)
 {
 	rec_engine.vad_off_time = ms;
 	return JOSHVM_OK;
-}
-
-//--test-------------------
-
-void test_callback(int index)
-{
-	printf("wakeup   callback  index = %d\n",index);
-	
-}
-
-void test_vad_callback(int index)
-{
-	printf("vad   callback  ---------------- index = %d\n",index);
-	
-}
-
-void test_rec_engine(void)
-{
-
-	joshvm_esp32_wakeup_enable(test_callback);
-
-	joshvm_esp32_vad_start(test_vad_callback);
-
-
 }
 

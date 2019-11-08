@@ -53,11 +53,8 @@ UBaseType_t pvCreatedTask_vadtask;
 extern esp_audio_handle_t           player;
 
 //---define
-#define MP3_2_STREAM_URI "file://userdata/bingo_2.mp3"
-#define MP3_1_STREAM_URI "file://userdata/bingo_1.mp3"
 #define MP3_STREAM_URI "file://userdata/ding.mp3"
-#define AMR_STREAM_MP3_SD_URI "file://sdcard/44100.mp3"
-#define AMR_STREAM_WAV_SD_URI "file://sdcard/48000.wav"
+
 
 //---fun
 extern void javanotify_simplespeech_event(int, int);
@@ -71,7 +68,7 @@ extern void esp32_stop_playback(void);
 extern void esp32_stop_record(void);
 extern void JavaNativeTest();
 
-
+char *int_buff = NULL;
 int esp32_read_voice_buffer(unsigned char* buffer,	int length)
 {
 	return 0;
@@ -88,19 +85,22 @@ void joshvm_app_init(void)
 	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
     app_sdcard_init();
+	ESP_LOGE(TAG,"before wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	app_wifi_service();
+	ESP_LOGE(TAG,"after wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	joshvm_vad_timer();
 
 
 	
+	int_buff = (char*)audio_malloc(1024);
 
 	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	/*	printf("Main task Executing on core : %d\n",xPortGetCoreID());
 
-	static char buf[1024];
-	vTaskGetRunTimeStats(buf);
+	
+	vTaskGetRunTimeStats(buff);
 	printf("JOSHVM_Audio,Run Time Stats:\nTask Name   Time	  Percent\n%s\n", buf);	
-	vTaskList(buf);
+	vTaskList(buff);
 	printf("JOSHVM_Audio,Task List:\nTask Name	 Status   Prio	  HWM	 Task Number\n%s\n", buf);
 	*/
 	vTaskDelay(500);
@@ -118,8 +118,8 @@ void joshvm_app_init(void)
 		printf("\n");
 */
 		pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
-		test_esp32_media();
-  		//JavaTask(); 
+		//test_esp32_media();
+  		JavaTask(); 
 		//JavaNativeTest();	
 		//extern void fun_test();
 		//fun_test();
@@ -177,16 +177,6 @@ int esp32_playback_voice(int i) {
 		return 0;
 	case 4:
 		joshvm_spiffs_audio_play_handler(MP3_STREAM_URI);		
-		return 0;
-	case 5:
-
-		joshvm_spiffs_audio_play_handler(MP3_2_STREAM_URI);
-		
-		return 0;
-	case 6:
-
-		joshvm_spiffs_audio_play_handler(MP3_1_STREAM_URI);
-		
 		return 0;
 	break;
 	default:

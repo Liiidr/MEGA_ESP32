@@ -63,6 +63,8 @@ typedef struct{
 	QueueHandle_t que;
 	joshvm_media_t* handle;
 }esp_audio_state_task_t;
+esp_audio_state_task_t esp_audio_state_task_param = {NULL,NULL};
+
 
 extern void javanotify_simplespeech_event(int, int);
 static void joshvm_spiffs_audio_play_init(joshvm_media_t *handle);
@@ -78,18 +80,18 @@ static void esp_audio_state_task (void *para)
         if ((esp_state.status == AUDIO_STATUS_STOPED)
             || (esp_state.status == AUDIO_STATUS_FINISHED)
             || (esp_state.status == AUDIO_STATUS_ERROR)) {
-
-			//javanotify_simplespeech_event(2, 0);
-			joshvm_esp32_media_callback(handle);
+            joshvm_err_t errcode;
+			if(esp_state.status == AUDIO_STATUS_ERROR){
+				errcode = JOSHVM_FAIL;
+			}else{
+				errcode = JOSHVM_OK;	
+			}
+			joshvm_esp32_media_callback(handle,errcode);
 			//break;//???
-        } 
+        } 			
     }
-	vQueueDelete(que);
-	if(para != NULL){
-		audio_free(para);
-		para = NULL;
-	}
-    vTaskDelete(NULL);
+
+    //vTaskDelete(NULL);
 }
 
 int _http_stream_event_handle(http_stream_event_msg_t *msg)
@@ -112,7 +114,7 @@ static void setup_player(joshvm_media_t* handle)
     if (player) {
         return ;
     }
-	esp_audio_state_task_t *esp_audio_state_task_param = (esp_audio_state_task_t*)audio_malloc(sizeof(esp_audio_state_task_t));
+	//esp_audio_state_task_t *esp_audio_state_task_param = (esp_audio_state_task_t*)audio_malloc(sizeof(esp_audio_state_task_t));
 
     esp_audio_cfg_t cfg = DEFAULT_ESP_AUDIO_CONFIG();
     cfg.resample_rate = 48000;
@@ -120,11 +122,9 @@ static void setup_player(joshvm_media_t* handle)
     cfg.evt_que = xQueueCreate(3, sizeof(esp_audio_state_t));
     player = esp_audio_create(&cfg);
 
-	esp_audio_state_task_param->que = cfg.evt_que;
-	esp_audio_state_task_param->handle = handle;
-    //xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, cfg.evt_que, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
-	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, (void*)esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
-
+	esp_audio_state_task_param.que = cfg.evt_que;
+	esp_audio_state_task_param.handle = handle;   
+	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, (void*)&esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
 
     // Create readers and add to esp_audio
     fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
@@ -179,8 +179,12 @@ void joshvm_audio_wrapper_init(joshvm_media_t* handle)
 
 void joshvm_audio_player_destroy()
 {
-	
+	//destroy player
+	vQueueDelete(esp_audio_state_task_param.que);
+	vTaskDelete(esp_audio_state_task_handler);
 	esp_audio_destroy(player);
+
+	//destroy spiffs player
 }
 
 int joshvm_audio_play_handler(const char *url)
@@ -199,6 +203,7 @@ static void joshvm_audio_state_task (void *handle)
 	audio_pipeline_set_listener(pipeline, evt);
 	while(1)
 	{
+		joshvm_err_t errcode;
         audio_event_iface_msg_t msg;
         esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
         if (ret != ESP_OK) {
@@ -207,12 +212,20 @@ static void joshvm_audio_state_task (void *handle)
         }
 
         if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) i2s_stream
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-            && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))) {
-            ESP_LOGI(TAG, "[ * ] bing end!");
+            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS){            
+            if(((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED)){        	
+			errcode = JOSHVM_OK;
 			audio_pipeline_terminate(pipeline);	
-			joshvm_esp32_media_callback(handle);
-            //break;//???
+			joshvm_esp32_media_callback(handle,errcode);  
+            }
+			if(((int)msg.data == AEL_STATUS_ERROR_CLOSE) || ((int)msg.data == AEL_STATUS_ERROR_INPUT)
+			|| ((int)msg.data == AEL_STATUS_ERROR_OPEN) ||  ((int)msg.data == AEL_STATUS_ERROR_OUTPUT)
+			||  ((int)msg.data == AEL_STATUS_ERROR_PROCESS) ||  ((int)msg.data == AEL_STATUS_ERROR_TIMEOUT)
+			|| ((int)msg.data == AEL_STATUS_ERROR_UNKNOWN)){
+				errcode = JOSHVM_FAIL;
+				audio_pipeline_terminate(pipeline); 
+				joshvm_esp32_media_callback(handle,errcode);
+			}
         }
 	}
     audio_pipeline_terminate(pipeline);
@@ -272,8 +285,7 @@ static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
 void joshvm_spiffs_audio_play_handler(const char *url)
 {
 	audio_element_set_uri(spiffs_stream, url);
-    int ret = audio_pipeline_run(pipeline);
-	printf("//////////************** ret = %d\n",ret);
+    audio_pipeline_run(pipeline);
 }
 
 void joshvm_spiffs_audio_stop_handler(void)

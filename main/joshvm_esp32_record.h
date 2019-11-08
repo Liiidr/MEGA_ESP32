@@ -8,9 +8,7 @@
 #include "fatfs_stream.h"
 #include "http_stream.h"
 #include "wav_encoder.h"
-
 #include "esp_log.h"
-
 #include "joshvm_esp32_media.h"
 
 

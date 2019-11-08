@@ -59,8 +59,8 @@ int joshvm_esp32_vad_set_timeout(int ms);
 
 
 //-------------test
-void test_rec_engine(void);
-void test_vad_callback(int index);
+//void test_rec_engine(void);
+//void test_vad_callback(int index);
 
 
 
