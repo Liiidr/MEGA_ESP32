@@ -87,14 +87,13 @@ void joshvm_app_init(void)
 	//esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
 	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
+    
     app_sdcard_init();
 	app_wifi_service();
 	joshvm_vad_timer();
-
-
 	
 
-	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+	ESP_LOGE(TAG,"before javatask iram free_size = %d\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	/*	printf("Main task Executing on core : %d\n",xPortGetCoreID());
 
 	static char buf[1024];
@@ -118,8 +117,8 @@ void joshvm_app_init(void)
 		printf("\n");
 */
 		pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
-		test_esp32_media();
-  		//JavaTask(); 
+		//test_esp32_media();
+  		JavaTask(); 
 		//JavaNativeTest();	
 		//extern void fun_test();
 		//fun_test();

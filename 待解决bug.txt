@@ -16,3 +16,35 @@
 
 1、mediaplayer 播放的时候复位			已解决，原因 每次播放结束时执行break，
 2、mediarecorder stop的时候连续报warring  ---	更换ADF解决
+
+
+main  stack		8688
+xPortGetMinimumEverFreeHeapSize :   2844728
+
+问天气
+IRAM
+main	203508
+SD	197676	196548
+wifi	122280	119676
+mediaplayer create	39024
+wakeup 	38284
+Vad created 38140
+vad close 	37128
+player start 37128
+player end  12876
+
+
+原始数据录播
+main	203508				程序开始时		
+SD	197676	196548			SD 	占1k
+wifi	196548     122280			wifi  	占74k
+before javatask	119676
+joshvm_esp32_media_create  106400   		 javatask 第一次调用底层接口     13k
+before audio_rec init	    106252	   		
+after audio_rec init	    84088 	 		初始化audio_rec  pipeline                    22k
+after audio_rec task  81664			audio_rec  task	2.5k 
+before track init   89448
+
+问天气
+
+

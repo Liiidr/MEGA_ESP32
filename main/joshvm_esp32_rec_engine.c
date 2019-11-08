@@ -99,7 +99,9 @@ static void rec_engine_task(void *handle)
 {
 	vad_que = xQueueCreate(4, sizeof(uint16_t));	
 	const esp_sr_iface_t *model = &esp_sr_wakenet5_quantized;
+	ESP_LOGE(TAG,"11before wakeup iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	model_iface_data_t *iface = model->create(DET_MODE_90);
+	ESP_LOGE(TAG,"11after wakeup iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	int audio_chunksize = model->get_samp_chunksize(iface);
 	audio_chunksize = audio_chunksize * sizeof(short);
 	rec_engine_t* rec_engine = (rec_engine_t*)handle;
@@ -151,7 +153,9 @@ static void rec_engine_task(void *handle)
 	audio_pipeline_register(pipeline, raw_read, "raw_rec_engine");
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
 	audio_pipeline_run(pipeline);
+	ESP_LOGE(TAG,"before vad iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	vad_handle_t vad_inst = vad_create(VAD_MODE_3, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
+	ESP_LOGE(TAG,"after vad iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
@@ -233,9 +237,9 @@ static void rec_engine_task(void *handle)
 			switch (keyword) {
 				case WAKE_UP:
 					ESP_LOGI(TAG, "Wake up");					
-					//printf("vad task free stack :				%d\n",pvCreatedTask_vadtask);
-				
-					//printf("xPortGetMinimumEverFreeHeapSize :   %d\n",xPortGetMinimumEverFreeHeapSize());
+					printf("vad task free stack :				%d\n",pvCreatedTask_vadtask);				
+					printf("xPortGetMinimumEverFreeHeapSize :   %d\n",xPortGetMinimumEverFreeHeapSize());				
+					ESP_LOGE(TAG,"wakeup iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 					//extern void joshvm_spiffs_audio_play_handler(const char *url);
 					//joshvm_spiffs_audio_play_handler("/userdata/ding.mp3");
 				
@@ -300,6 +304,8 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 		ESP_LOGI(TAG,"rec_engine have created!");
 		return JOSHVM_OK;
 	}	
+	
+	ESP_LOGE(TAG,"before wakeup  heap free_size = %d,%s,%d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__,__LINE__);
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
 
 	return 0;
@@ -351,12 +357,21 @@ int joshvm_esp32_wakeup_enable(void(*callback)(int))
 	}
 
 	int8_t ret;
+	extern int8_t create_cnt;
+	if(create_cnt == 0){
+		if(joshvm_esp32_audio_board_init() != JOSHVM_OK){
+			ESP_LOGI(TAG,"AUDIO BOARD INIT FAIL!");
+			return JOSHVM_FAIL;
+		}
+		create_cnt++;
+		vTaskDelay(200);
+	}
+	
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_enable");
 	rec_engine.wakeup_callback = callback;
 	ret = joshvm_rec_engine_create(&rec_engine,WAKEUP_ENABLE);
 
 	return ret;
-
 }
 
 int joshvm_esp32_wakeup_disable()

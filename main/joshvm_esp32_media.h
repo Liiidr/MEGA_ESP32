@@ -134,6 +134,9 @@ typedef struct {
 //---fun
 void joshvm_esp32_media_callback(joshvm_media_t *handle);
 
+
+joshvm_err_t joshvm_esp32_audio_board_init();
+
 /**
  * @brief Create 
  *
