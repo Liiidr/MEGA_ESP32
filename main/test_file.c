@@ -138,16 +138,16 @@ void test_esp32_media(void)
 	
 
 
-	joshvm_esp32_media_create(0,&handle_media_player_test);
+	//joshvm_esp32_media_create(0,&handle_media_player_test);
 
-	joshvm_esp32_media_create(1,&handle_media_rec_test);
-	//joshvm_esp32_media_create(2,&handle_track_test);
-	//joshvm_esp32_media_create(3,&handle_recorder_test);
+	//joshvm_esp32_media_create(1,&handle_media_rec_test);
+	joshvm_esp32_media_create(2,&handle_track_test);
+	joshvm_esp32_media_create(3,&handle_recorder_test);
 	//joshvm_esp32_vad_start(test_vad_callback);
 
 
 
-//RECORDER
+/*//RECORDER
 	joshvm_esp32_media_set_output_file(handle_media_rec_test,"/sdcard/default55.wav");
 	joshvm_esp32_media_set_audio_sample_rate(handle_media_rec_test,16000);
 	joshvm_esp32_media_set_channel_config(handle_media_rec_test,1);
@@ -159,9 +159,9 @@ void test_esp32_media(void)
 	vTaskDelay(3000 / portTICK_PERIOD_MS); 
 
 	joshvm_esp32_media_close(handle_media_rec_test);
+*/
 
-
-/*	//audio_track  audio_recorder
+	//audio_track  audio_recorder
 
 	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
 	vTaskDelay(20000 / portTICK_PERIOD_MS); 
@@ -182,7 +182,7 @@ void test_esp32_media(void)
 	vTaskDelay(20000 / portTICK_PERIOD_MS); 
 	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
 	joshvm_esp32_media_stop(handle_track_test);
-*/
+
 
 
 
