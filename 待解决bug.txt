@@ -1,4 +1,4 @@
-1、http element task create err，偶现（内存不足）
+1、http element task create err，偶现
      出现条件：
       	唤醒、断句、询问天气，mediaplayer播放url，在mediaplayer创建http task时
 
@@ -9,10 +9,9 @@
 	audiorecorder录音之后，通过audiotrack播放时
 
 
-3、播放提示音出错（内存不足）
+3、播放提示音出错
      pipeline_run 报错
 
-4、完善init board
 
 
 1、mediaplayer 播放的时候复位			已解决，原因 每次播放结束时执行break，

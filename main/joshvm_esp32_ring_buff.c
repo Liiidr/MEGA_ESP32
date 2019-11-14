@@ -41,15 +41,10 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
     int32_t write_offset = rb->write_offset;
     int32_t total_size = rb->total_size;
     int32_t first_write_size = 0;
-	int32_t written_size = 0;
+	uint32_t written_size = 0;
 
 	if(rb == NULL){
 		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
-		return -1;
-	}
-
-	if(size < 0){
-		ESP_LOGE(TAG,"write ringbuffer size is err![%s][%d]",__FILE__,__LINE__);
 		return -1;
 	}
 
@@ -81,7 +76,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
 		rb->read_offset = rb->write_offset;
 		rb->valid_size = rb->total_size;	
 	}
-	ESP_LOGI(TAG,"write rb valid_size = %d\n",rb->valid_size);
+	//ESP_LOGI(TAG,"write rb valid_size = %d\n",rb->valid_size);
 	return written_size;
 }
 
@@ -97,12 +92,6 @@ uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
 		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
 		return -1;
 	}
-
-	if(size < 0){
-		ESP_LOGE(TAG,"read ringbuffer size is err![%s][%d]",__FILE__,__LINE__);
-		return -1;
-	}
-	
     if (size > rb->valid_size){
 		size = rb->valid_size;	
     }
