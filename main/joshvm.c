@@ -119,7 +119,6 @@ void joshvm_app_init(void)
 */
 		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
 		//extern void test_esp32_media(void);
-
 		//test_esp32_media();
   		JavaTask(); 
 		//JavaNativeTest();	
