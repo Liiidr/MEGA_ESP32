@@ -174,7 +174,7 @@ static void setup_player(joshvm_media_t* handle)
 void joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
     setup_player(handle);
-	joshvm_spiffs_audio_play_init(handle);
+	//joshvm_spiffs_audio_play_init(handle);
 }
 
 void joshvm_audio_player_destroy()
@@ -285,7 +285,11 @@ static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
 void joshvm_spiffs_audio_play_handler(const char *url)
 {
 	audio_element_set_uri(spiffs_stream, url);
-    audio_pipeline_run(pipeline);
+	if(pipeline != NULL){
+   		audio_pipeline_run(pipeline);
+	}else{
+		ESP_LOGE(TAG, "Can't Play notify voice!");
+	}
 }
 
 void joshvm_spiffs_audio_stop_handler(void)

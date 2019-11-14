@@ -85,9 +85,9 @@ void joshvm_app_init(void)
 	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
     app_sdcard_init();
-	ESP_LOGE(TAG,"before wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+	//ESP_LOGE(TAG,"before wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	app_wifi_service();
-	ESP_LOGE(TAG,"after wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+	//ESP_LOGE(TAG,"after wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	joshvm_vad_timer();
 
 
@@ -117,10 +117,10 @@ void joshvm_app_init(void)
 		heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
 		printf("\n");
 */
-		pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
-		extern void test_esp32_media(void);
-		test_esp32_media();
-  		//JavaTask(); 
+		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
+		//extern void test_esp32_media(void);
+		//test_esp32_media();
+  		JavaTask(); 
 		//JavaNativeTest();	
 		//extern void fun_test();
 		//fun_test();
