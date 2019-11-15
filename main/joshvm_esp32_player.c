@@ -141,6 +141,7 @@ static void setup_player(joshvm_media_t* handle)
     i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
     i2s_writer.i2s_config.sample_rate = 48000;
     i2s_writer.type = AUDIO_STREAM_WRITER;
+	i2s_writer.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
     esp_audio_output_stream_add(player, i2s_stream_init(&i2s_writer));
 
     // Add decoders and encoders to esp_audio
@@ -151,7 +152,7 @@ static void setup_player(joshvm_media_t* handle)
     mp3_dec_cfg.task_core = 1;
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
     aac_cfg.task_core = 1;
-    esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, aac_decoder_init(&aac_cfg));
+    //esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, aac_decoder_init(&aac_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, wav_decoder_init(&wav_dec_cfg));
 	//esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, amr_decoder_init(&amr_dec_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, mp3_decoder_init(&mp3_dec_cfg));
@@ -256,6 +257,7 @@ static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
 
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
     i2s_cfg.type = AUDIO_STREAM_WRITER;
+	i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
     i2s_stream = i2s_stream_init(&i2s_cfg);
 
    	//wav_decoder_cfg_t wav_cfg = DEFAULT_WAV_DECODER_CONFIG();
@@ -349,21 +351,30 @@ audio_err_t joshvm_audio_time_get(int *time)
 
 audio_err_t joshvm_volume_get_handler(int *volume)
 {	
-	 if(audio_hal_get_volume(MegaBoard_handle->audio_hal,volume) == ESP_OK){
-	 	ESP_LOGI(TAG, "[ * ] Get volume: %d %%", *volume);
-		return  ESP_OK;
-	 }
-	 return  ESP_FAIL;
+	if(MegaBoard_handle->audio_hal != NULL){
+		 if(audio_hal_get_volume(MegaBoard_handle->audio_hal,volume) == ESP_OK){
+		 	ESP_LOGI(TAG, "[ * ] Get volume: %d %%", *volume);
+			return  ESP_OK;
+		 }
+	}
+	return  ESP_FAIL;
 }
 
 audio_err_t joshvm_volume_set_handler(int volume)
 {
-	if((volume >= 0) && (volume <= 100)){
-		if(audio_hal_set_volume(MegaBoard_handle->audio_hal, volume) == ESP_OK){
-			ESP_LOGI(TAG, "[ * ] Volume set to %d %%", volume);
-			return ESP_OK;
-		}
+
+	if(volume < 0){
+		volume = 0;
 	}
+	if(volume > 100){
+		volume = 100;
+	}	
+		
+	if(audio_hal_set_volume(MegaBoard_handle->audio_hal, volume) == ESP_OK){
+		ESP_LOGI(TAG, "[ * ] Volume set to %d %%", volume);
+		return ESP_OK;
+	}
+
 	ESP_LOGI(TAG, "volume: %d illegal", volume);
 	return ESP_FAIL;
 }

@@ -110,9 +110,8 @@ static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int 
 		if(AUDIO_STREAM_READER == type){
 			i2s_cfg.i2s_port = 1;		
 		}
-		if(AUDIO_STREAM_WRITER == type){
-			i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
-		}
+		i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
+
 	#endif
     i2s_cfg.i2s_config.use_apll = 0;
     i2s_cfg.type = type;
@@ -405,6 +404,7 @@ void joshvm_audio_track_task(void* handle)
 			while(1){//playing
 				read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
 				if(read_size){
+					printf("track 1 valid_size = %d\n",audio_track_rb->valid_size);
 					if(NEED_CB == rb_callback_flag){
 						rb_callback_flag = NO_NEED_CB;						
 						callback(handle,JOSHVM_OK);
@@ -412,18 +412,9 @@ void joshvm_audio_track_task(void* handle)
 					}
 					//raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
 					raw_stream_write(raw_writer,(char*)voicebuff,read_size);
-					printf("track valid_size = %d\n",audio_track_rb->valid_size);
+					printf("track 2 valid_size = %d\n",audio_track_rb->valid_size);
 				}
 
-				/*
-				if((read_size) && (NEED_CB == rb_callback_flag)){
-					callback(handle,JOSHVM_OK);
-				}
-				while(read_size){//play, once have data to play
-					raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-					printf("track valid_size = %d\n",audio_track_rb->valid_size);
-				}
-				*/
 				xQueueReceive(que, &que_val, 0);
 				if(que_val == QUE_TRACK_STOP){
 					printf("QUE_TRACK_STOP\n");
