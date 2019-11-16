@@ -85,7 +85,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 {
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("--->>>MEGA_ESP32 Version alpha_v1.30>>>---\r\n");		
+		printf("--->>>MEGA_ESP32 Version Alpha_v1.31>>>---\r\n");		
 	}
 
 	if(create_cnt == 0){

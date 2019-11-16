@@ -20,19 +20,44 @@ static const char *TAG              = "APP_WIFI_SERVICE>>>>>>>";
 static periph_service_handle_t wifi_serv = NULL;
 QueueHandle_t app_wifi_serv_queue = NULL;
 
-
+#define SSID_LENGTH	32
+#define PASSWD_LENGTH 64
 #define	PROPERTY_CFG	1
 #define LAST_AIRKISS_CFG 2
 #define	AIRKISS_CFG	3
-#define LAST_CONNECT_cfg 4
+
 
 typedef struct{
-	char *last_connect_ssid;
-	char *last_connect_password;
-	char *property_ssid;
-	char *property_password;
-}app_wifi_config_t;
-app_wifi_config_t *app_wifi_config = NULL;
+	char property_ssid[SSID_LENGTH];
+	char property_password[PASSWD_LENGTH];
+}app_wifi_propsta_config_t;
+static app_wifi_propsta_config_t *app_wifi_config = NULL;
+
+typedef struct{
+	char *ssid;
+	char *passwd;
+}app_wifi_aksta_config_t;
+static app_wifi_aksta_config_t *ak_sta = NULL;
+
+
+static void wifi_config_init()
+{
+	app_wifi_config = (app_wifi_propsta_config_t*)audio_malloc(sizeof(app_wifi_propsta_config_t));
+	memset(app_wifi_config->property_ssid,'\0',sizeof(app_wifi_config->property_ssid));
+	memset(app_wifi_config->property_password,'\0',sizeof(app_wifi_config->property_password));
+	
+	ak_sta = (app_wifi_aksta_config_t *)audio_malloc(sizeof(app_wifi_aksta_config_t));
+	ak_sta->ssid = (char *)audio_malloc(SSID_LENGTH * sizeof(char));
+	ak_sta->passwd = (char *)audio_malloc(PASSWD_LENGTH * sizeof(char)); 	
+}
+
+static void wifi_config_deinit()
+{
+	audio_free(app_wifi_config);
+	audio_free(ak_sta);
+	audio_free(ak_sta->ssid);
+	audio_free(ak_sta->passwd);
+}
 
 void app_wifi_airkissprofile_write(char *ssid,char *passwd)
 {/*
@@ -57,78 +82,67 @@ void app_wifi_airkissprofile_write(char *ssid,char *passwd)
     ESP_LOGI(TAG, "airkiss_profile written");
 }
 
-void app_wifi_airkissprofile_read(char *ssid,char *passwd)
+static joshvm_err_t app_wifi_airkissprofile_read()
 {
 	// Open renamed file for reading
 	ESP_LOGI(TAG, "Reading airkiss profile");
 	FILE* f = fopen("/appdb/unsecure/airkiss_profile.txt", "r");
 	if (f == NULL) {
 		ESP_LOGE(TAG, "Failed to open airkiss profile for reading");
-		return;
+		return JOSHVM_FAIL;
 	}
 	
-	fgets(ssid, 64, f);	
-	fgets(passwd, 64, f);
+	fgets(ak_sta->ssid, SSID_LENGTH, f);	
+	fgets(ak_sta->passwd, PASSWD_LENGTH, f);
 	fclose(f);
 
 	// strip newline
-	char* pos = strchr(ssid, ':');
-	ssid = pos+1;
-	pos = strchr(ssid, '\n');
+	char* pos = strchr(ak_sta->ssid, ':');
+	ak_sta->ssid = pos+1;
+	pos = strchr(ak_sta->ssid, '\n');
 	if (pos) {
 		*pos = '\0';
 	}
 	
 	// strip newline
-	pos = strchr(passwd, ':');
-	passwd = pos+1;
-	pos = strchr(passwd, '\n');
+	pos = strchr(ak_sta->passwd, ':');
+	ak_sta->passwd = pos+1;
+	pos = strchr(ak_sta->passwd, '\n');
 	if (pos) {
 		*pos = '\0';
 	}
-	printf("Read from airkiss profile,ssid:'%s',passwd:'%s'\n",ssid, passwd);
+	printf("Read from airkiss profile,ssid:'%s',passwd:'%s'\n",ak_sta->ssid, ak_sta->passwd);
+	return JOSHVM_OK;
 }
-
-
 
 void app_wifi_get_airkisscfg(char *ssid,char *pwd)
 {
 	app_wifi_airkissprofile_write(ssid,pwd);	
 }
 
-void app_wifi_get_last_connectcfg(uint8_t ssid[],uint8_t ssid_len,uint8_t pwd[],uint8_t pwd_len)
+static joshvm_err_t app_wifi_airkiss_cfg_connect()
 {
-	memcpy(app_wifi_config->last_connect_ssid, ssid, ssid_len);
-    memcpy(app_wifi_config->last_connect_password, pwd, pwd_len);
+	if(app_wifi_airkissprofile_read() != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}
+	wifi_config_t sta_cfg = {0};
+	strncpy((char *)&sta_cfg.sta.ssid,ak_sta->ssid, strlen(ak_sta->ssid));
+	strncpy((char *)&sta_cfg.sta.password,ak_sta->passwd, strlen(ak_sta->passwd));
+	if(wifi_service_set_sta_info(wifi_serv, &sta_cfg) != ESP_OK){
+		return JOSHVM_FAIL;
+	}
+	return JOSHVM_OK;
 }
 
-void app_wifi_airkiss_cfg_connect()
+static joshvm_err_t app_wifi_property_cfg_connect()
 {
-	int ret;
-	char ssid[32],passwd[64];
-	app_wifi_airkissprofile_read(ssid,passwd);
 	wifi_config_t sta_cfg = {0};
-	strncpy((char *)&sta_cfg.sta.ssid,ssid, strlen(ssid));
-	strncpy((char *)&sta_cfg.sta.password,passwd, strlen(passwd));
-	ret = wifi_service_set_sta_info(wifi_serv, &sta_cfg);
-}
-
-void app_wifi_lastconnect_cfg_connect()
-{
-	int ret;
-	wifi_config_t sta_cfg = {0};
-	strncpy((char *)&sta_cfg.sta.ssid,app_wifi_config->last_connect_ssid, strlen(app_wifi_config->last_connect_ssid));
-	strncpy((char *)&sta_cfg.sta.password,app_wifi_config->last_connect_password, strlen(app_wifi_config->last_connect_password));
-	ret = wifi_service_set_sta_info(wifi_serv, &sta_cfg);
-}
-
-void app_wifi_property_cfg_connect()
-{
-	int ret;
-	wifi_config_t sta_cfg = {0};
-	strncpy((char *)&sta_cfg.sta.ssid,app_wifi_config->property_ssid, strlen(app_wifi_config->property_ssid));
-	strncpy((char *)&sta_cfg.sta.password,app_wifi_config->property_password, strlen(app_wifi_config->property_password));
-	ret = wifi_service_set_sta_info(wifi_serv, &sta_cfg);
+	strncpy((char *)&sta_cfg.sta.ssid,(const char*)(app_wifi_config->property_ssid), strlen(app_wifi_config->property_ssid));
+	strncpy((char *)&sta_cfg.sta.password,(const char*)(app_wifi_config->property_password), strlen(app_wifi_config->property_password));
+	if(wifi_service_set_sta_info(wifi_serv, &sta_cfg) != ESP_OK){
+		return JOSHVM_FAIL;
+	}
+	return JOSHVM_OK;
 }
 
 
@@ -139,13 +153,11 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
 			 
     if (evt->type == WIFI_SERV_EVENT_CONNECTED) {		
         ESP_LOGI(TAG, "PERIPH_WIFI_CONNECTED [%d]", __LINE__);
-
-
+			
     } else if (evt->type == WIFI_SERV_EVENT_DISCONNECTED) {
         ESP_LOGI(TAG, "PERIPH_WIFI_DISCONNECTED [%d]", __LINE__);
 		uint32_t senddata = APP_WIFI_SERV_DISCONNECTED;
 		xQueueSend(app_wifi_serv_queue,&senddata,0);
-
 
     } else if (evt->type == WIFI_SERV_EVENT_SETTING_TIMEOUT) {
 		ESP_LOGI(TAG, "WIFI_SERV_EVENT_SETTING_TIMEOUT [%d]", __LINE__);
@@ -157,10 +169,7 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
 static void app_wifi_task(void *parameter)
 {
 	uint32_t r_queue = 0;
-	int8_t cnt = 0;
-
-	char ssid[64],passwd[64];//test
-	
+	int8_t cnt = 0;	
 
 	while(1){
 		xQueueReceive(app_wifi_serv_queue, &r_queue, portMAX_DELAY);		
@@ -174,12 +183,8 @@ static void app_wifi_task(void *parameter)
 			case	APP_WIFI_SERV_RECONNECTEDFAILED:				
 				ESP_LOGI(TAG,"APP_WIFI_SERV_RECONNECTEDFAILED");
 				cnt++;				
-				if(cnt > 4) cnt = 1;
+				if(cnt > 3) cnt = 1;				
 				switch(cnt){
-					case 	LAST_CONNECT_cfg:
-						printf("wifi connecting with last SSID and PASSWD.\n");
-						app_wifi_lastconnect_cfg_connect();
-					break;
 					case	PROPERTY_CFG:
 						printf("wifi connecting with property SSID and PASSWD.\n");
 						app_wifi_property_cfg_connect();
@@ -197,8 +202,6 @@ static void app_wifi_task(void *parameter)
 					break;
 				}	
 				break;
-
-
 			default:
 
 				break;
@@ -208,17 +211,12 @@ static void app_wifi_task(void *parameter)
 	}
 }
 
-
-
-
 void app_wifi_service(void)
 {
-	app_wifi_config = (app_wifi_config_t*)audio_malloc(sizeof(app_wifi_config_t));
-
-
-	wifi_config_t sta_cfg = {0};
-	strncpy((char *)&sta_cfg.sta.ssid,"JOSH", strlen("JOSH"));
-	strncpy((char *)&sta_cfg.sta.password,"josh20177", strlen("josh20177"));
+	wifi_config_init();
+	//wifi_config_t sta_cfg = {0};
+	//strncpy((char *)&sta_cfg.sta.ssid,"JOSH", strlen("JOSH"));
+	//strncpy((char *)&sta_cfg.sta.password,"josh20177", strlen("josh20179"));
 
 	app_wifi_serv_queue = xQueueCreate(3, sizeof(uint32_t));
 	if(NULL == app_wifi_serv_queue){
@@ -240,17 +238,19 @@ void app_wifi_service(void)
 	h = airkiss_config_create(&air_info);
 	esp_wifi_setting_regitster_notify_handle(h, (void *)wifi_serv);
 	wifi_service_register_setting_handle(wifi_serv, h, &reg_idx);
-	wifi_service_set_sta_info(wifi_serv, &sta_cfg);
+	//wifi_service_set_sta_info(wifi_serv, &sta_cfg);
 	
-	xTaskCreate(app_wifi_task,"app_wifi_task",3*1024,NULL,5,NULL);
-	
+	xTaskCreate(app_wifi_task,"app_wifi_task",3*1024,NULL,5,NULL);	
 }
 
 int joshvm_esp32_wifi_set(char* ssid, char* password, int force)
 {
 	int ret = JOSHVM_FAIL;
-	app_wifi_config->property_ssid = ssid;
-	app_wifi_config->property_password = password;
+
+	strncpy(app_wifi_config->property_ssid,ssid,strlen(ssid));
+	//strncpy(app_wifi_config->property_password ,password,strlen(password));
+	strncpy(app_wifi_config->property_password ,"12345678",strlen(password));
+	
 	if(force == false){
 		//ret = wifi_service_state_get(wifi_serv);
 		//if(ret == PERIPH_SERVICE_STATE_RUNNING){
