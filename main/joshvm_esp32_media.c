@@ -274,6 +274,11 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 
 int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, int))
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	ESP_LOGI(TAG,"joshvm_esp32_media_prepare");
 	int ret = 0;
 	switch(handle->media_type){
@@ -294,6 +299,10 @@ static char source_fatfs_head[9] = "userdata";
 int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int))
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_start");
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
 	int ret = 0;
@@ -361,7 +370,11 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 int joshvm_esp32_media_pause(joshvm_media_t* handle)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_pause");
-
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+	
 	int ret;
 	audio_status = JOSHVM_MEDIA_PAUSED;
 	switch(handle->media_type){
@@ -387,6 +400,10 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 int joshvm_esp32_media_stop(joshvm_media_t* handle)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_stop");
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
 	int ret = JOSHVM_FAIL;
@@ -413,7 +430,6 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			handle->joshvm_media_u.joshvm_media_audiorecorder.status = AUDIO_STOP;
 			que_val = QUE_RECORD_STOP;
 			xQueueSend(que, &que_val, (portTickType)0);
-			//vTaskSuspend(audio_recorder_handler);//test
 			ret = audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline);
 			joshvm_audio_rcorder_release(handle);
 			ESP_LOGI(TAG,"AudioRedorder stop!");
@@ -429,7 +445,10 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 int joshvm_esp32_media_reset(joshvm_media_t* handle)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_reset");
-
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:			
@@ -453,6 +472,11 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle)
 
 int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
@@ -497,6 +521,12 @@ int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 
 int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesRead, void(*callback)(void*, int))
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
+
 	int ret = JOSHVM_OK;
 	switch(handle->media_type){
 		case AUDIO_RECORDER:
@@ -529,6 +559,11 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 
 int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int size, int* bytesWritten, void(*callback)(void*, int))
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	handle->joshvm_media_u.joshvm_media_audiotrack.rb_callback = callback;
 	uint8_t ret = joshvm_audio_track_write(handle->joshvm_media_u.joshvm_media_audiotrack.status,handle->joshvm_media_u.joshvm_media_audiotrack.track_rb,buffer,size,bytesWritten);
 	if(ret == JOSHVM_NOTIFY_LATER){
@@ -539,12 +574,22 @@ int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int 
 
 int joshvm_esp32_media_flush(joshvm_media_t* handle)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	ring_buffer_flush(handle->joshvm_media_u.joshvm_media_audiotrack.track_rb);
 	return 0;
 }
 
 int joshvm_esp32_media_get_buffsize(joshvm_media_t* handle, int* size)
 {	
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	switch(handle->media_type){
 		case AUDIO_TRACK:
 			*size = A_TRACK_RB_SIZE;
@@ -561,6 +606,11 @@ int joshvm_esp32_media_get_buffsize(joshvm_media_t* handle, int* size)
 
 int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t value)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:					
@@ -587,6 +637,11 @@ int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t va
 
 int joshvm_esp32_media_set_channel_config(joshvm_media_t* handle, uint8_t value)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:					
@@ -613,6 +668,11 @@ int joshvm_esp32_media_set_channel_config(joshvm_media_t* handle, uint8_t value)
 
 int joshvm_esp32_media_set_audio_bit_rate(joshvm_media_t* handle, uint8_t value)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:					
@@ -643,6 +703,11 @@ static char source_http_head[5] = "http";
 int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source)
 {
 	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
+	if(handle == NULL){
 		printf("handle = NULL\n");
 		return JOSHVM_FAIL;
 	}
@@ -671,6 +736,11 @@ int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source)
 
 int joshvm_esp32_media_set_output_file(joshvm_media_t* handle, char* file)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_RECORDER:
@@ -686,6 +756,11 @@ int joshvm_esp32_media_set_output_file(joshvm_media_t* handle, char* file)
 
 int joshvm_esp32_media_set_output_format(joshvm_media_t* handle, int format)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_RECORDER:
@@ -701,6 +776,11 @@ int joshvm_esp32_media_set_output_format(joshvm_media_t* handle, int format)
 
 int joshvm_esp32_media_get_position(joshvm_media_t* handle, int* pos)
 {
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
@@ -717,6 +797,10 @@ int joshvm_esp32_media_get_position(joshvm_media_t* handle, int* pos)
 int joshvm_esp32_media_set_position(joshvm_media_t* handle, int pos, void(*callback)(void*, int))
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_set_position");
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
 
 	int ret;
 	switch(handle->media_type){
@@ -734,6 +818,10 @@ int joshvm_esp32_media_set_position(joshvm_media_t* handle, int pos, void(*callb
 int joshvm_esp32_media_get_duration(joshvm_media_t* handle, int* duration)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_get_duration");
+	if(handle == NULL){
+		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
 
 	int ret;
 	switch(handle->media_type){

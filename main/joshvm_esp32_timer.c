@@ -26,6 +26,7 @@
 
 
 extern uint32_t vad_off_time;
+extern uint16_t track_check_time_cnt;
 /*
  * A sample structure to pass events
  * from the timer interrupt handler to the main program.
@@ -140,9 +141,10 @@ static void timer_evt_task(void *arg)
 {
     while (1) {
         timer_event_t evt;
-        xQueueReceive(timer_queue, &evt, portMAX_DELAY);
+        xQueueReceive(timer_queue, &evt, portMAX_DELAY);//every 200ms
 		if(vad_off_time < 0xffffffff){
 			vad_off_time++;
+			track_check_time_cnt++;
 		}
 		/*
         //Print the timer values passed by event 

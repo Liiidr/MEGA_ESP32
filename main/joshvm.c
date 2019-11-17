@@ -48,6 +48,7 @@
 static const char *TAG              = "JOSHVM_Audio";
 audio_board_handle_t MegaBoard_handle = NULL;
 UBaseType_t pvCreatedTask_vadtask;
+//static display_service_handle_t disp_serv = NULL;
 
 
 extern esp_audio_handle_t           player;
@@ -68,7 +69,7 @@ extern void esp32_stop_playback(void);
 extern void esp32_stop_record(void);
 extern void JavaNativeTest();
 
-char *int_buff = NULL;
+
 int esp32_read_voice_buffer(unsigned char* buffer,	int length)
 {
 	return 0;
@@ -78,21 +79,18 @@ void joshvm_app_init(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
-	//MegaBoard_handle = audio_board_init();
-	//audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
-	//esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+	//disp_serv = audio_board_led_init();
+
+
     //audio_board_sdcard_init(set);
     app_sdcard_init();
-	//ESP_LOGE(TAG,"before wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	app_wifi_service();
-	//ESP_LOGE(TAG,"after wifi = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	joshvm_vad_timer();
 
 
+	//display_service_set_pattern(disp_serv, DISPLAY_PATTERN_TURN_ON, 0);
 	
-	int_buff = (char*)audio_malloc(1024);
 
 	ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	/*	printf("Main task Executing on core : %d\n",xPortGetCoreID());

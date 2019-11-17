@@ -59,6 +59,7 @@ static audio_element_handle_t i2s_stream,spiffs_stream,mp3_decoder,filter;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
 
+
 typedef struct{
 	QueueHandle_t que;
 	joshvm_media_t* handle;
@@ -351,7 +352,8 @@ audio_err_t joshvm_audio_time_get(int *time)
 
 audio_err_t joshvm_volume_get_handler(int *volume)
 {	
-	if(MegaBoard_handle->audio_hal != NULL){
+	if(MegaBoard_handle != NULL){
+		ESP_LOGI(TAG, "[ * ] Get volume1: %d %%", *volume);
 		 if(audio_hal_get_volume(MegaBoard_handle->audio_hal,volume) == ESP_OK){
 		 	ESP_LOGI(TAG, "[ * ] Get volume: %d %%", *volume);
 			return  ESP_OK;
@@ -362,27 +364,33 @@ audio_err_t joshvm_volume_get_handler(int *volume)
 
 audio_err_t joshvm_volume_set_handler(int volume)
 {
-
+	if(MegaBoard_handle == NULL){
+		ESP_LOGE(TAG,"Can't set volume,before instantiate a object");
+		return ESP_FAIL;
+	}
+	
 	if(volume < 0){
 		volume = 0;
 	}
 	if(volume > 100){
 		volume = 100;
 	}	
-		
+
 	if(audio_hal_set_volume(MegaBoard_handle->audio_hal, volume) == ESP_OK){
 		ESP_LOGI(TAG, "[ * ] Volume set to %d %%", volume);
 		return ESP_OK;
 	}
-
-	ESP_LOGI(TAG, "volume: %d illegal", volume);
 	return ESP_FAIL;
 }
 
 void joshvm_volume_adjust_handler(int volume)
 {
-    //ESP_LOGI(TAG, "adj_volume by %d", volume);
     int vol = 0;
+	if(MegaBoard_handle == NULL){
+		ESP_LOGE(TAG,"Can't adjust volume,before instantiate a object");
+		return ;
+	}
+		
 	audio_hal_get_volume(MegaBoard_handle->audio_hal,&vol);
     vol += volume;
 	if(vol > 100)vol = 100;
