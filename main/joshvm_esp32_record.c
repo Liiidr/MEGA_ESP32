@@ -55,7 +55,7 @@
 #define	A_TRACK_CHA			handle->joshvm_media_u.joshvm_media_audiotrack.channel
 #define A_TRACK_BITS		handle->joshvm_media_u.joshvm_media_audiotrack.bit_rate
 
-#define TRACK_CHENK_TIMEOUT 600
+#define TRACK_CHENK_TIMEOUT 800
 uint16_t track_check_time_cnt = 0;
 typedef struct rsp_filter {
     resample_info_t *resample_info;
@@ -125,7 +125,7 @@ static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int 
     i2s_info.channels = channels;
     i2s_info.sample_rates = sample_rates;
     audio_element_setinfo(i2s_stream, &i2s_info);
-	printf("i2s_info %d  %d  %d\r\n ",i2s_info.sample_rates,i2s_info.channels,i2s_info.bits);
+	//printf("i2s_info %d  %d  %d\r\n ",i2s_info.sample_rates,i2s_info.channels,i2s_info.bits);
     return i2s_stream;
 }
 
@@ -151,7 +151,7 @@ static audio_element_handle_t create_wav_encoder(int sample_rate,int bits,int ch
 	wav_info.channels = channels;
 	wav_info.bits = bits;
 	audio_element_setinfo(wav_encoder, &wav_info);		
-	printf("wav_info %d  %d  %d\r\n ",wav_info.sample_rates,wav_info.channels,wav_info.bits);	
+	//printf("wav_info %d  %d  %d\r\n ",wav_info.sample_rates,wav_info.channels,wav_info.bits);	
 	return wav_encoder;
 }
 
@@ -166,7 +166,7 @@ static audio_element_handle_t create_amrnb_encoder(int sample_rate,int bits,int 
 	amrnb_info.channels = channels;
 	amrnb_info.bits = bits;
 	audio_element_setinfo(amrnb_en, &amrnb_info);		
-	printf("amrnb_info %d  %d  %d\r\n ",amrnb_info.sample_rates,amrnb_info.channels,amrnb_info.bits);	
+	//printf("amrnb_info %d  %d  %d\r\n ",amrnb_info.sample_rates,amrnb_info.channels,amrnb_info.bits);	
 	return amrnb_en;
 }
 
@@ -181,7 +181,7 @@ static audio_element_handle_t create_amrwb_encoder(int sample_rate,int bits,int 
 	amrwb_info.channels = channels;
 	amrwb_info.bits = bits;
 	audio_element_setinfo(amrwb_en, &amrwb_info);		
-	printf("amrwb_info %d  %d  %d\r\n ",amrwb_info.sample_rates,amrwb_info.channels,amrwb_info.bits);	
+	//printf("amrwb_info %d  %d  %d\r\n ",amrwb_info.sample_rates,amrwb_info.channels,amrwb_info.bits);	
 	return amrwb_en;
 }
 
@@ -196,7 +196,7 @@ static audio_element_handle_t create_opus_encoder(int sample_rate,int bits,int c
 	opus_info.channels = channels;
 	opus_info.bits = bits;
 	audio_element_setinfo(opus_en, &opus_info);		
-	printf("opus_info %d  %d  %d\r\n ",opus_info.sample_rates,opus_info.channels,opus_info.bits);	
+	//printf("opus_info %d  %d  %d\r\n ",opus_info.sample_rates,opus_info.channels,opus_info.bits);	
 	return opus_en;
 }
 
@@ -212,7 +212,7 @@ static audio_element_handle_t create_fatfs_stream(int sample_rates, int bits, in
     writer_info.channels = channels;
     writer_info.sample_rates = sample_rates;
     audio_element_setinfo(fatfs_stream, &writer_info);	
-	printf("fatfs_info %d  %d  %d\r\n ",writer_info.sample_rates,writer_info.channels,writer_info.bits);
+	//printf("fatfs_info %d  %d  %d\r\n ",writer_info.sample_rates,writer_info.channels,writer_info.bits);
     return fatfs_stream;
 }
  
@@ -431,11 +431,8 @@ void joshvm_audio_track_task(void* handle)
 		}		
 	}
 	printf("track break ----------1----------\n");
-	audio_pipeline_terminate(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
-	printf("track break ----------2----------\n");
 	joshvm_audio_track_release(handle);
 	audio_free(voicebuff);
-	printf("track break ----------3----------\n");
 	vTaskDelete(NULL);
 }
 
@@ -556,7 +553,10 @@ void joshvm_media_recorder_release(joshvm_media_t* handle)
 
 void joshvm_audio_track_release(joshvm_media_t* handle)
 {
+	printf("track break ----------2----------\n");
+
 	audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
+	printf("track break ----------3----------\n");
     audio_pipeline_unregister(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline,\
 		   					  handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer);
 	audio_pipeline_unregister(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline,\

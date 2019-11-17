@@ -20,7 +20,7 @@
 //5*48*2*1000    48K*2CHA*5S = 16K*1CHA*60S 
 #define A_RECORD_RB_SIZE 48*10000
 #define A_TRACK_RB_SIZE 48*10000
-#define A_VAD_RB_SIZE 16*10000	//16K*1CHA*20S 
+#define A_VAD_RB_SIZE 32*10000	//16K*1CHA*16/8*10S 
 //---variable
 static int8_t audio_status = 0;
 static struct{
@@ -422,7 +422,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 		case AUDIO_TRACK:	
 			handle->joshvm_media_u.joshvm_media_audiotrack.status = AUDIO_STOP;
 			que_val = QUE_TRACK_STOP;
-			xQueueSend(que, &que_val, (portTickType)0);
+			xQueueSend(que, &que_val, (portTickType)0);			
 			ESP_LOGI(TAG,"AudioTrack stop!");
 			ret = JOSHVM_OK;
 			break;

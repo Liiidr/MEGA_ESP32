@@ -206,7 +206,11 @@ static void app_wifi_task(void *parameter)
 					case	LAST_AIRKISS_CFG:
 						printf("wifi connecting with airkiss profile SSID and PASSWD.\n");
 						led_flash = FLASH_FAST;
-						app_wifi_airkiss_cfg_connect();
+						if(app_wifi_airkiss_cfg_connect() == JOSHVM_FAIL){
+							printf("enable airkiss.\n");
+							led_flash = FLASH_SLOW;
+							wifi_service_setting_start(wifi_serv, 0);
+						}
 						
 					break;
 					case 	AIRKISS_CFG:
