@@ -154,7 +154,7 @@ static joshvm_err_t app_wifi_property_cfg_connect()
 
 static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_service_event_t *evt, void *ctx)
 {
-    ESP_LOGE(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
+    ESP_LOGD(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
              evt->type, evt->source, evt->data, evt->len, ctx);
 			 
 	if(evt->type == WIFI_SERV_EVENT_CONNECTING){

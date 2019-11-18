@@ -54,8 +54,10 @@
 esp_audio_handle_t player;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
+static TaskHandle_t joshvm_audio_state_task_handler = NULL;
 static audio_pipeline_handle_t pipeline;
 static audio_element_handle_t i2s_stream,spiffs_stream,mp3_decoder,filter;
+static audio_event_iface_handle_t evt = NULL;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
 
@@ -66,9 +68,9 @@ typedef struct{
 }esp_audio_state_task_t;
 esp_audio_state_task_t esp_audio_state_task_param = {NULL,NULL};
 
-
 extern void javanotify_simplespeech_event(int, int);
 static void joshvm_spiffs_audio_play_init(joshvm_media_t *handle);
+static void joshvm_spiffs_audio_player_destroy();
 
 static void esp_audio_state_task (void *para)
 {
@@ -176,7 +178,7 @@ static void setup_player(joshvm_media_t* handle)
 void joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
     setup_player(handle);
-	//joshvm_spiffs_audio_play_init(handle);
+	joshvm_spiffs_audio_play_init(handle);
 }
 
 void joshvm_audio_player_destroy()
@@ -186,7 +188,7 @@ void joshvm_audio_player_destroy()
 	vTaskDelete(esp_audio_state_task_handler);
 	esp_audio_destroy(player);
 
-	//destroy spiffs player
+	joshvm_spiffs_audio_player_destroy();
 }
 
 int joshvm_audio_play_handler(const char *url)
@@ -200,7 +202,7 @@ int joshvm_audio_play_handler(const char *url)
 static void joshvm_audio_state_task (void *handle)
 {
 	audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
+    evt = audio_event_iface_init(&evt_cfg);
 
 	audio_pipeline_set_listener(pipeline, evt);
 	while(1)
@@ -230,21 +232,6 @@ static void joshvm_audio_state_task (void *handle)
 			}
         }
 	}
-    audio_pipeline_terminate(pipeline);
-    audio_pipeline_unregister(pipeline, spiffs_stream);
-    audio_pipeline_unregister(pipeline, mp3_decoder);
-    audio_pipeline_unregister(pipeline, filter); 
-	audio_pipeline_unregister(pipeline, i2s_stream);
-    audio_pipeline_remove_listener(pipeline);
-
-    audio_event_iface_destroy(evt);
-    audio_pipeline_deinit(pipeline);
-    audio_element_deinit(spiffs_stream);
-    audio_element_deinit(mp3_decoder);
-    audio_element_deinit(i2s_stream);
-	audio_element_deinit(filter);
-
-    vTaskDelete(NULL);
 }
 
 static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
@@ -282,11 +269,12 @@ static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
 	
 	audio_pipeline_link(pipeline, (const char *[]) {"file_reader", "mp3_decoder", "filter_upsample", "i2s_writer"}, 4);
 
-	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, handle, JOSHVM_AUDIO_STATE_TASK_PRI, NULL);
+	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, handle, JOSHVM_AUDIO_STATE_TASK_PRI, &joshvm_audio_state_task_handler);
 }
 
 void joshvm_spiffs_audio_play_handler(const char *url)
 {
+	ESP_LOGI(TAG, "spiffs playing:%s",url);
 	audio_element_set_uri(spiffs_stream, url);
 	if(pipeline != NULL){
    		audio_pipeline_run(pipeline);
@@ -294,6 +282,26 @@ void joshvm_spiffs_audio_play_handler(const char *url)
 		ESP_LOGE(TAG, "Can't Play notify voice!");
 	}
 }
+
+void joshvm_spiffs_audio_player_destroy()
+{
+	audio_pipeline_terminate(pipeline);
+    audio_pipeline_unregister(pipeline, spiffs_stream);
+    audio_pipeline_unregister(pipeline, mp3_decoder);
+    audio_pipeline_unregister(pipeline, filter); 
+	audio_pipeline_unregister(pipeline, i2s_stream);
+    audio_pipeline_remove_listener(pipeline);
+
+    audio_event_iface_destroy(evt);
+    audio_pipeline_deinit(pipeline);
+    audio_element_deinit(spiffs_stream);
+    audio_element_deinit(mp3_decoder);
+    audio_element_deinit(i2s_stream);
+	audio_element_deinit(filter);
+
+    vTaskDelete(joshvm_audio_state_task_handler);
+}
+
 
 void joshvm_spiffs_audio_stop_handler(void)
 {

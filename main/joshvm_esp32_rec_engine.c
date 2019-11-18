@@ -399,7 +399,7 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 	ESP_LOGI(TAG,"joshvm_esp32_vad_start");
 	ring_buffer_flush(joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
-	printf("vad ringbuffer data valid size = %d\n",joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
+	ESP_LOGI(TAG,"flush rb when vad start,vad ringbuffer data valid size = %d\n",joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
 	joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_START;	
 	int8_t ret;
 	rec_engine.vad_off_time = VAD_OFF_TIME;
@@ -411,7 +411,7 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 int joshvm_esp32_vad_pause()
 {
-	printf("joshvm_esp32_vad_pause-------------\n");
+	//printf("joshvm_esp32_vad_pause-------------\n");
 
 	if(rec_engine.pause_resume_flag == pause_resume_flag_resume){
 		rec_engine.pause_resume_flag = pause_resume_flag_pause;
@@ -424,7 +424,7 @@ int joshvm_esp32_vad_pause()
 
 int joshvm_esp32_vad_resume()
 {
-	printf("joshvm_esp32_vad_resume-----------------\n");
+	//printf("joshvm_esp32_vad_resume-----------------\n");
 	if(rec_engine.pause_resume_flag == pause_resume_flag_pause){
 		rec_engine.pause_resume_flag = pause_resume_flag_resume;
 		rec_engine.vad_state = VAD_RESUME;

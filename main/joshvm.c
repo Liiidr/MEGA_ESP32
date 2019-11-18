@@ -104,6 +104,15 @@ void joshvm_app_init(void)
 	vTaskDelay(500);
 
 	while (1) {
+		//extern  void joshvm_spiffs_audio_play_init(joshvm_media_t* handle);
+		//extern void joshvm_spiffs_audio_play_handler(const char *url);
+		//joshvm_spiffs_audio_play_init(NULL);
+		//joshvm_spiffs_audio_play_handler("file://userdata/ding.mp3");
+		
+		//extern void test_esp32_media(void);
+		//test_esp32_media();
+
+	
 		/*
 		printf("MALLOC_CAP_DEFAULT\n");
 		heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
