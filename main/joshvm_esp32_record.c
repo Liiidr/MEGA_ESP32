@@ -231,6 +231,12 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	//---create resample_filter
 	audio_element_handle_t filter = create_filter(RECORD_RATE,RECORD_CHANNEL,SAVE_FILE_RATE,SAVE_FILE_CHANNEL,AUDIO_CODEC_TYPE_ENCODER);
 	
+	//---create fatfs element
+	audio_element_handle_t fatfs_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
+	//---register
+    audio_pipeline_register(recorder, i2s_stream_reader, "i2s_media_rec");
+	audio_pipeline_register(recorder, filter, "resample_media_rec");
+	
 	//---create encoder element
 	if(joshvm_meida_format_wav == handle->joshvm_media_u.joshvm_media_mediarecorder.format){
 		audio_element_handle_t wav_encoder = create_wav_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);
@@ -249,12 +255,7 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 		audio_pipeline_register(recorder, opus_encoder, "encode_media_rec");
 		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = opus_encoder; 
 	}
-
-	//---create fatfs element
-	audio_element_handle_t fatfs_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
-	//---register
-    audio_pipeline_register(recorder, i2s_stream_reader, "i2s_media_rec");
-	audio_pipeline_register(recorder, filter, "resample_media_rec");
+	
 	audio_pipeline_register(recorder, fatfs_writer, "fatfs_media_rec");
     audio_pipeline_link(recorder, (const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","fatfs_media_rec"}, 4);
 	audio_element_set_uri(fatfs_writer,handle->joshvm_media_u.joshvm_media_mediarecorder.url);
@@ -264,6 +265,12 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.filter = filter;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer = fatfs_writer;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline = recorder;
+
+
+	audio_pipeline_run(recorder);
+	vTaskDelay(2000);
+	audio_pipeline_terminate( recorder);
+	
     return JOSHVM_OK;
 }
 

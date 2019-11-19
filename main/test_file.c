@@ -29,7 +29,7 @@
 
 //------------------test--start-----------------
 void *handle_media_rec_test = NULL;
-static void *handle_media_player_test = NULL;
+void *handle_media_player_test = NULL;
 void *handle_track_test = NULL;
 void *handle_recorder_test = NULL;
 void test_esp32_media(void);
@@ -49,7 +49,7 @@ static void media_player_callback_test(void*handle,int para)
 
 
 
-//static void *handle_media_rec= NULL;
+static void *handle_media_rec= NULL;
 static void *handle_media_player = NULL;
 //static void *handle_track = NULL;
 //static void *handle_audio_rec = NULL;
@@ -124,7 +124,7 @@ void fun_test()
 
 void test_esp32_media(void)
 {
-
+/*
 //---wakeup test
 	joshvm_esp32_wakeup_enable(media_player_callback_test);
 
@@ -132,14 +132,14 @@ void test_esp32_media(void)
 
 	
 	joshvm_esp32_wakeup_enable(media_player_callback_test);
-
+*/
 
 
 	
 
 
-	joshvm_esp32_media_create(0,&handle_media_player_test);
-	//joshvm_esp32_media_create(1,&handle_media_rec_test);
+	//joshvm_esp32_media_create(0,&handle_media_player_test);
+	joshvm_esp32_media_create(1,&handle_media_rec_test);
 	//joshvm_esp32_media_create(2,&handle_track_test);
 	//joshvm_esp32_media_create(3,&handle_recorder_test);
 	//joshvm_esp32_vad_start(test_vad_callback);
