@@ -85,7 +85,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 {
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("--->>>MEGA_ESP32 Version Alpha_v1.34>>>---\r\n");		
+		printf("--->>>MEGA_ESP32 Version Alpha_v1.36>>>---\r\n");		
 	}
 
 	if(create_cnt == 0){
@@ -295,7 +295,6 @@ int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, in
 	return ret;
 }
 
-static char source_fatfs_head[9] = "userdata";
 int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int))
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_start");
@@ -306,17 +305,15 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
 	int ret = 0;
-	if(audio_status != JOSHVM_MEDIA_PAUSED){	//start		
+	if(audio_status != JOSHVM_MEDIA_PAUSED){//start		
 		switch(handle->media_type){
 			case MEDIA_PLAYER:			
 				handle->joshvm_media_u.joshvm_media_mediaplayer.callback = callback;		
 				ESP_LOGE(TAG,"player start heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));			
-			
-				if(strstr(handle->joshvm_media_u.joshvm_media_mediaplayer.url,source_fatfs_head) == NULL){
-					ret = joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
-				}else{
-					joshvm_spiffs_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
-				}					
+
+				if(joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url) != ESP_OK){
+					return JOSHVM_FAIL;
+				}			
 				ESP_LOGE(TAG,"player end heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 								
 				break;
@@ -698,8 +695,9 @@ int joshvm_esp32_media_set_audio_bit_rate(joshvm_media_t* handle, uint8_t value)
 
 }
 
-static char source_head[100] = "file:/";
-static char source_http_head[5] = "http";
+static const char fatfs_file[7] = "sdcard";
+static const char spiffs_file[9] = "userdata";
+static char url_source[64];
 int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source)
 {
 	if(handle == NULL){
@@ -707,23 +705,24 @@ int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source)
 		return JOSHVM_FAIL;
 	}
 
-	if(handle == NULL){
-		printf("handle = NULL\n");
-		return JOSHVM_FAIL;
-	}
-
 	int ret;	
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
-			if(strstr(source,source_http_head) == NULL){
-				source_head[sizeof("file:/")-1] = '\0';
-				strcat(source_head,source);
-				handle->joshvm_media_u.joshvm_media_mediaplayer.url = source_head;
-				ESP_LOGI(TAG,"Set MediaPlayer Source:%s",source_head);
-			}else{
+			//spiffs
+			if(strstr(source,spiffs_file) != NULL){
+				sprintf(url_source,"spiffs:/%s",source);	
+				handle->joshvm_media_u.joshvm_media_mediaplayer.url = url_source;
+				ESP_LOGI(TAG,"Set MediaPlayer spiffs Source:%s",url_source);
+			}//fatfs
+			else if(strstr(source,fatfs_file) != NULL){
+				sprintf(url_source,"file:/%s",source);
+				handle->joshvm_media_u.joshvm_media_mediaplayer.url = url_source;
+				ESP_LOGI(TAG,"Set MediaPlayer farfs Source:%s",url_source);
+			}//http_url
+			else{
 				handle->joshvm_media_u.joshvm_media_mediaplayer.url = source;
-				ESP_LOGI(TAG,"Set MediaPlayer Source:%s",source);
-			}				
+				ESP_LOGI(TAG,"Set MediaPlayer http Source:%s",source);
+			}			
 			ret = JOSHVM_OK;
 			break;
 		default :

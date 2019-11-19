@@ -57,8 +57,6 @@ void joshvm_audio_player_destroy();
  */
 int joshvm_audio_play_handler(const char *url);
 
-void joshvm_spiffs_audio_play_handler(const char *url);
-void joshvm_spiffs_audio_stop_handler(void);
 audio_err_t joshvm_audio_pause(void);
 audio_err_t joshvm_audio_resume_handler(const char *url);
 audio_err_t joshvm_audio_stop_handler(void);

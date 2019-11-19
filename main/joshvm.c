@@ -148,50 +148,7 @@ void joshvm_app_init(void)
  **/
 int esp32_playback_voice(int i) {
 	//NOT implemented
-	esp_err_t ret = ESP_FAIL;
-	int player_volume = 0;
-	switch(i){
-	case 0:
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	break;
-	case 1:
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	break;
-	case 2:
-
-        esp_audio_vol_get(player, &player_volume);
-        player_volume += 10;
-        if (player_volume > 100) {
-            player_volume = 100;
-        }
-        esp_audio_vol_set(player, player_volume);
-        printf("AUDIO_USER_KEY_VOL_UP [%d]\n", player_volume);
-
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	case 3:
-
-		esp_audio_vol_get(player, &player_volume);
-		player_volume -= 10;
-		if (player_volume < 0) {
-			player_volume = 0;
-		}
-		esp_audio_vol_set(player, player_volume);
-		printf("AUDIO_USER_KEY_VOL_DOWN [%d]\n", player_volume);
-
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	case 4:
-		joshvm_spiffs_audio_play_handler(MP3_STREAM_URI);		
-		return 0;
-	break;
-	default:
-	break;
-	}
-	
-	return ret;
+	return 0;
 }
 
 int esp32_record_voicefile(unsigned char* filename, int time) {
