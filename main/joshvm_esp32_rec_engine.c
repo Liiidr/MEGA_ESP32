@@ -93,14 +93,15 @@ static QueueHandle_t vad_que = NULL;
 extern joshvm_media_t *joshvm_media_vad;
 extern uint8_t wakeup_obj_created_status;
 uint32_t vad_off_time = 0;
+extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
+//---fun
+esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type);
 
 static void rec_engine_task(void *handle)
 {
 	vad_que = xQueueCreate(4, sizeof(uint16_t));	
 	const esp_sr_iface_t *model = &esp_sr_wakenet5_quantized;
-	ESP_LOGE(TAG,"11before wakeup iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	model_iface_data_t *iface = model->create(DET_MODE_90);
-	ESP_LOGE(TAG,"11after wakeup iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	int audio_chunksize = model->get_samp_chunksize(iface);
 	audio_chunksize = audio_chunksize * sizeof(short);
 	rec_engine_t* rec_engine = (rec_engine_t*)handle;
@@ -144,16 +145,21 @@ static void rec_engine_task(void *handle)
 		.out_rb_size = 8 * 1024,
 		.type = AUDIO_STREAM_READER,
 	};
-	raw_read = raw_stream_init(&raw_cfg);
+	raw_read = raw_stream_init(&raw_cfg);	
 
 	audio_pipeline_register(pipeline, i2s_stream_reader, "i2s_rec_engine");
 	audio_pipeline_register(pipeline, filter, "filter_rec_engine");
 	audio_pipeline_register(pipeline, raw_read, "raw_rec_engine");
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
 	audio_pipeline_run(pipeline);
-	ESP_LOGE(TAG,"before vad iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 	vad_handle_t vad_inst = vad_create(VAD_MODE_3, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
-	ESP_LOGE(TAG,"after vad iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
+/*
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		ESP_LOGE(TAG,"wakeup or vad engine create failed");
+		xSemaphoreGive( xSemaphore_MegaBoard_init );
+		goto exit;
+	}
+		*/
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
@@ -247,15 +253,16 @@ static void rec_engine_task(void *handle)
 			}
 		}
 	}
+//exit:
     ESP_LOGI(TAG, "[ 5 ] Destroy VAD");
     vad_destroy(vad_inst);
 	ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline");	
 	audio_pipeline_terminate(pipeline);	
 	/* Terminate the pipeline before removing the listener */
-	audio_pipeline_remove_listener(pipeline);	
 	audio_pipeline_unregister(pipeline, raw_read);
 	audio_pipeline_unregister(pipeline, i2s_stream_reader);
 	audio_pipeline_unregister(pipeline, filter);	
+
 	/* Release all resources */
 	audio_pipeline_deinit(pipeline);
 	audio_element_deinit(raw_read);
@@ -270,6 +277,12 @@ static void rec_engine_task(void *handle)
 		vQueueDelete(vad_que);
 		vad_que = NULL;
 	}	
+	if(rec_engine->vad_state == VAD_START){
+		joshvm_rec_engine_destroy(rec_engine, VAD_STOP);
+		joshvm_esp32_media_close(joshvm_media_vad);
+	}else{
+		joshvm_rec_engine_destroy(rec_engine, WAKEUP_DISABLE);
+	}
 	vTaskDelete(NULL);
 }
 
@@ -297,7 +310,6 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 		return JOSHVM_OK;
 	}	
 	
-	ESP_LOGE(TAG,"before wakeup  heap free_size = %d,%s,%d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__,__LINE__);
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
 	return 0;
 }
@@ -322,8 +334,6 @@ esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type)
 	return 0;
 }
 
-
-
 //---------------------------------------------
 int joshvm_esp32_wakeup_get_word_count(void)
 {	
@@ -341,27 +351,17 @@ int joshvm_esp32_wakeup_get_word(int pos, int* index, char* wordbuf, int wordlen
 
 int joshvm_esp32_wakeup_enable(void(*callback)(int))
 {
-	int8_t ret;
-	extern int8_t create_cnt;
-
-    if(rec_engine.wakeup_state == WAKEUP_ENABLE){
+	if(rec_engine.wakeup_state == WAKEUP_ENABLE){
 		ESP_LOGW(TAG,"wakeup has already enable");
 		return JOSHVM_INVALID_STATE;
 	}
-
-	wakeup_obj_created_status = OBJ_CREATED;
-	if(create_cnt == 0){
-		if(joshvm_mep32_board_init() != JOSHVM_OK){
-			return JOSHVM_FAIL;
-		}
-		create_cnt++;
-	}
-	
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_enable");
-	rec_engine.wakeup_callback = callback;
-	ret = joshvm_rec_engine_create(&rec_engine,WAKEUP_ENABLE);
+	wakeup_obj_created_status = OBJ_CREATED;
+	joshvm_mep32_board_init();
 
-	return ret;
+	
+	rec_engine.wakeup_callback = callback;
+	return joshvm_rec_engine_create(&rec_engine,WAKEUP_ENABLE);
 }
 
 int joshvm_esp32_wakeup_disable()
@@ -394,12 +394,9 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 	ring_buffer_flush(joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
 	ESP_LOGI(TAG,"flush rb when vad start,vad ringbuffer data valid size = %d\n",joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
 	joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_START;	
-	int8_t ret;
 	rec_engine.vad_off_time = VAD_OFF_TIME;
 	rec_engine.vad_callback = callback;
-	ret = joshvm_rec_engine_create(&rec_engine,VAD_START);
-
-	return ret;
+	return joshvm_rec_engine_create(&rec_engine,VAD_START);
 }
 
 int joshvm_esp32_vad_pause()

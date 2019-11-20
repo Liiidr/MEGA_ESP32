@@ -172,7 +172,7 @@ static void app_wifi_airkiss_enable()
 
 static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_service_event_t *evt, void *ctx)
 {
-    ESP_LOGE(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
+    ESP_LOGD(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
              evt->type, evt->source, evt->data, evt->len, ctx);
 	ESP_LOGE(TAG,"state = %d",wifi_service_state_get(wifi_serv));
 			 
@@ -181,7 +181,7 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
 		app_wifi_state = CONNECTING;
 	}
 	else if (evt->type == WIFI_SERV_EVENT_CONNECTED) {		
-        ESP_LOGI(TAG, "PERIPH_WIFI_CONNECTED [%d]", __LINE__);
+        printf("PERIPH_WIFI_CONNECTED [%d]\n\n", __LINE__);
 		app_wifi_state = CONNECTED;
 			
     } else if (evt->type == WIFI_SERV_EVENT_DISCONNECTED) {

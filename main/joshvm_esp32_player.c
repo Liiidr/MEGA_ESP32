@@ -163,16 +163,20 @@ static void setup_player(joshvm_media_t* handle)
     ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
 
-void joshvm_audio_wrapper_init(joshvm_media_t* handle)
-{
-    setup_player(handle);
-}
-
 void joshvm_audio_player_destroy()
 {
 	vQueueDelete(esp_audio_state_task_param.que);
 	vTaskDelete(esp_audio_state_task_handler);
 	esp_audio_destroy(player);
+}
+
+joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
+{
+    setup_player(handle);
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}
+	return JOSHVM_OK;
 }
 
 int joshvm_audio_play_handler(const char *url)

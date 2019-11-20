@@ -261,6 +261,10 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.filter = filter;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer = fatfs_writer;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline = recorder;
+	
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}	
     return JOSHVM_OK;
 }
 
@@ -383,6 +387,10 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer = raw_writer;
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline = audio_track;
 	ESP_LOGE(TAG,"joshvm_audio_track_init = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}
 	return audio_pipeline_run(audio_track);
 }
 
@@ -446,7 +454,6 @@ int joshvm_audio_track_write(uint8_t status,ring_buffer_t* rb, unsigned char* bu
 }
 
 int joshvm_audio_recorder_init(joshvm_media_t* handle)
-
 {	
 	audio_element_handle_t raw_reader = NULL;
     audio_pipeline_handle_t audio_recorder = NULL;
@@ -474,7 +481,10 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle)
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.filter = filter;	
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader = raw_reader;
 	handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline = audio_recorder;	
-
+	
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}
 	return audio_pipeline_run(audio_recorder);
 }
 

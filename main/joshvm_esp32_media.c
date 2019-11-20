@@ -50,6 +50,12 @@ static uint8_t a_track_obj_created_status = 0;
 static uint8_t a_rec_obj_created_status = 0;
 static uint8_t a_vad_obj_created_status = 0;
 uint8_t wakeup_obj_created_status = 0;
+static ring_buffer_t audio_recorder_rb;
+static ring_buffer_t audio_track_rb;
+static ring_buffer_t audio_vad_rb;
+static uint8_t run_one_time = 0;
+audio_board_handle_t MegaBoard_handle = NULL;
+extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 
 
 void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
@@ -60,58 +66,51 @@ void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 	handle->joshvm_media_u.joshvm_media_mediaplayer.callback(handle,errcode);
 }
 
-static ring_buffer_t audio_recorder_rb;
-static ring_buffer_t audio_track_rb;
-static ring_buffer_t audio_vad_rb;
-static uint8_t run_one_time = 0;
-int8_t create_cnt = 0;//count created obj 
-extern audio_board_handle_t MegaBoard_handle;
-
 joshvm_err_t joshvm_mep32_board_init(void)
 {
+	if(xSemaphore_MegaBoard_init == NULL){
+		ESP_LOGE(TAG,"Init Board failed,xSemaphore_MegaBoard_init is NULL");
+		return JOSHVM_FAIL;
+	}	
+
+	if(xSemaphoreTake( xSemaphore_MegaBoard_init, ( TickType_t ) 0 ) != pdTRUE){
+		ESP_LOGI(TAG,"Board has been init");
+		return JOSHVM_OK;
+	}
+
 	ESP_LOGI(TAG,"Init Board!");
 	MegaBoard_handle = audio_board_init();
 	if((MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
 		ESP_LOGE(TAG,"init board failed!");
+		if(MegaBoard_handle->audio_hal != NULL){
+			audio_hal_deinit(MegaBoard_handle->audio_hal);
+		}
+		if(MegaBoard_handle->adc_hal != NULL){
+			audio_hal_deinit(MegaBoard_handle->adc_hal);
+		}
+	
+		xSemaphoreGive( xSemaphore_MegaBoard_init );
 		return JOSHVM_FAIL;
 	}
 	
 	int ret = audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 	if(ret != ESP_OK){
+		audio_hal_deinit(MegaBoard_handle->audio_hal);	
+		audio_hal_deinit(MegaBoard_handle->adc_hal);
+		xSemaphoreGive( xSemaphore_MegaBoard_init );
 		return JOSHVM_FAIL;
 	}
 	audio_hal_set_volume(MegaBoard_handle->audio_hal,61);
 	return JOSHVM_OK;
 }
 
-joshvm_err_t joshvm_esp32_audio_board_init()
-{
-	ESP_LOGI(TAG,"Init Board!");
-	uint8_t ret;
-	MegaBoard_handle = audio_board_init();
-	ret = audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-	if(ret == ESP_OK){
-		return JOSHVM_OK;
-	}
-	return JOSHVM_FAIL;
-} 
-
 int joshvm_esp32_media_create(int type, void** handle)
 {
-	
-	ESP_LOGE(TAG,"joshvm_esp32_media_create  heap free_size = %d,%s,%d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__,__LINE__);
 	if(run_one_time == 0){
 		run_one_time = 1;		
 		printf("--->>>MEGA_ESP32 Version Alpha_v1.40>>>---\r\n");		
 	}
 
-	if(create_cnt == 0){
-
-		if(joshvm_mep32_board_init() != JOSHVM_OK){
-			return JOSHVM_FAIL;
-		}
-	}
-	
 	int ret = JOSHVM_OK;
 	joshvm_media_t* joshvm_media_a = NULL;	
 	if(type != AUDIO_VAD_REC){	
@@ -122,10 +121,11 @@ int joshvm_esp32_media_create(int type, void** handle)
 					
 					joshvm_media_a = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media_a->media_type = type;
-					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
-					
-					joshvm_audio_wrapper_init(joshvm_media_a);
-					create_cnt++;
+					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));					
+					if(joshvm_audio_wrapper_init(joshvm_media_a) != JOSHVM_OK){
+						joshvm_esp32_media_close(joshvm_media_a);						
+						return JOSHVM_FAIL;
+					}		
 					*handle = joshvm_media_a;			
 					ret = JOSHVM_OK;
 				}else{
@@ -146,12 +146,13 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media_a->joshvm_media_u.joshvm_media_mediarecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
 					joshvm_media_a->joshvm_media_u.joshvm_media_mediarecorder.channel = j_meida_rec_default_cfg.channel;
 					joshvm_media_a->joshvm_media_u.joshvm_media_mediarecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
-
-					ret = joshvm_meida_recorder_init(joshvm_media_a);
+				
+					if(joshvm_meida_recorder_init(joshvm_media_a) != JOSHVM_OK){
+						joshvm_esp32_media_close(joshvm_media_a);
+						return JOSHVM_FAIL;
+					}
 					ESP_LOGI(TAG,"MediaRecorder created!");					
-					create_cnt++;
 					*handle = joshvm_media_a;
-					ret = JOSHVM_OK;
 				}else{
 					ESP_LOGW(TAG,"MediaRecorder has arleady created!Can't create again!");
 					ret =  JOSHVM_FAIL;
@@ -172,7 +173,6 @@ int joshvm_esp32_media_create(int type, void** handle)
 
 					joshvm_media_a->joshvm_media_u.joshvm_media_audiotrack.track_rb = &audio_track_rb;
 					ESP_LOGI(TAG,"AudioTrack created!");					
-					create_cnt++;
 					*handle = joshvm_media_a;
 					ret = JOSHVM_OK;
 				}else{
@@ -192,10 +192,8 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media_a->joshvm_media_u.joshvm_media_audiorecorder.sample_rate = j_audio_rec_default_cfg.sample_rate;
 					joshvm_media_a->joshvm_media_u.joshvm_media_audiorecorder.channel = j_audio_rec_default_cfg.channel;
 					joshvm_media_a->joshvm_media_u.joshvm_media_audiorecorder.bit_rate = j_audio_rec_default_cfg.bit_rate;
-
 					joshvm_media_a->joshvm_media_u.joshvm_media_audiorecorder.rec_rb = &audio_recorder_rb;
 					ESP_LOGI(TAG,"AudioRecorder created!");					
-					create_cnt++;
 					*handle = joshvm_media_a;
 					ret = JOSHVM_OK;
 				}else{
@@ -217,8 +215,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 
 			ring_buffer_init(&audio_vad_rb,A_VAD_RB_SIZE);
 			joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb = &audio_vad_rb;				
-			ESP_LOGI(TAG,"VAD AudioRecorder created!");			
-			create_cnt++;		
+			ESP_LOGI(TAG,"VAD AudioRecorder created!");					
 			*handle = joshvm_media_vad;
 			ret = JOSHVM_OK;			
 		}else{
@@ -234,6 +231,10 @@ int joshvm_esp32_media_create(int type, void** handle)
 int joshvm_esp32_media_close(joshvm_media_t* handle)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_close");
+	if(handle == NULL){
+		return JOSHVM_OK;
+	}
+	
 	if(NULL != handle->evt_que){
 		vQueueDelete(handle->evt_que);
 		handle->evt_que = NULL;
@@ -280,10 +281,10 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 		&& (a_rec_obj_created_status == OBJ_CREATED_NOT)\
 		&& (a_vad_obj_created_status == OBJ_CREATED_NOT)\
 		&& (wakeup_obj_created_status == OBJ_CREATED_NOT)){
-		create_cnt = 0;
 		audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_STOP);
 		audio_hal_deinit(MegaBoard_handle->audio_hal);	
 		audio_hal_deinit(MegaBoard_handle->adc_hal);	
+		xSemaphoreGive( xSemaphore_MegaBoard_init );
 	}
 	return JOSHVM_OK;
 }
@@ -320,42 +321,41 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 	}
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
-	int ret = 0;
+	int ret = JOSHVM_FAIL;
 	if(audio_status != JOSHVM_MEDIA_PAUSED){//start		
 		switch(handle->media_type){
 			case MEDIA_PLAYER:			
-				handle->joshvm_media_u.joshvm_media_mediaplayer.callback = callback;		
-
+				handle->joshvm_media_u.joshvm_media_mediaplayer.callback = callback;
 				if(joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url) != ESP_OK){
 					return JOSHVM_FAIL;
-				}			
-				ESP_LOGE(TAG,"player end heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-								
+				}									
 				break;
 			case MEDIA_RECORDER:
-				ret = audio_pipeline_run(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline);
+				if(audio_pipeline_run(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline) != ESP_OK){
+					return JOSHVM_FAIL;
+				}
 				break;
 			case AUDIO_TRACK:
 				handle->joshvm_media_u.joshvm_media_audiotrack.status = AUDIO_START;
 				handle->joshvm_media_u.joshvm_media_audiotrack.rb_callback_flag = NO_NEED_CB;
 				handle->joshvm_media_u.joshvm_media_audiotrack.callback = callback;
-				ESP_LOGE(TAG,"before track init task iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
-				ret = joshvm_audio_track_init(handle);
+				if(joshvm_audio_track_init(handle) != JOSHVM_OK){
+					joshvm_esp32_media_close(handle);
+					return JOSHVM_FAIL;
+				}
 				que_val = QUE_TRACK_START;
 				xQueueSend(que, &que_val, (portTickType)0);
-				ESP_LOGE(TAG,"after track init,before track task iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 				xTaskCreate(joshvm_audio_track_task,"joshvm_audio_track_task",2*1024,(void*)handle,JOSHVM_AUDIO_TRACK_TASK_PRI,&audio_track_handler);
-				ESP_LOGE(TAG,"after track task iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 				ESP_LOGI(TAG,"AudioTrack start!");
 				break;
 			case AUDIO_RECORDER:
 				handle->joshvm_media_u.joshvm_media_audiorecorder.status = AUDIO_START;
 				handle->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag = NO_NEED_CB;			
-				ESP_LOGE(TAG,"before audio_rec init task iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
-				ret = joshvm_audio_recorder_init(handle);				
-				ESP_LOGE(TAG,"after audio_rec init,before audio_rec task iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
+				if(joshvm_audio_recorder_init(handle) != JOSHVM_OK){
+					joshvm_esp32_media_close(handle);
+					return JOSHVM_FAIL;
+				}	
 				xTaskCreate(joshvm_audio_recorder_task, "joshvm_audio_recorder_task", 2 * 1024, (void*)handle, JOSHVM_AUDIO_RECORDER_TASK_PRI, &audio_recorder_handler);
-				ESP_LOGE(TAG,"after audio_rec task iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
 				ESP_LOGI(TAG,"AudioRecorder start!");
 				break;
 			default :

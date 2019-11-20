@@ -46,9 +46,9 @@
 
 //---variate
 static const char *TAG              = "JOSHVM_Audio";
-audio_board_handle_t MegaBoard_handle = NULL;
 UBaseType_t pvCreatedTask_vadtask;
 extern esp_audio_handle_t           player;
+SemaphoreHandle_t xSemaphore_MegaBoard_init = NULL;
 
 //---define
 //---fun
@@ -74,6 +74,7 @@ void joshvm_app_init(void)
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
 
+	xSemaphore_MegaBoard_init = xSemaphoreCreateMutex(); 
     //audio_board_sdcard_init(set);
     
     app_sdcard_init();
@@ -90,8 +91,8 @@ void joshvm_app_init(void)
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 
 	while (1) {		
-		//extern void test_esp32_media(void);
-		//test_esp32_media();
+		extern void test_esp32_media(void);
+		test_esp32_media();
 		//heap_caps_print_heap_info(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );  		
 		//JavaNativeTest();	

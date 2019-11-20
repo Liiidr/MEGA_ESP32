@@ -31,7 +31,7 @@
  * @brief DCS init function
  *
  */
-void joshvm_audio_wrapper_init(joshvm_media_t* handle);
+joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle);
 void joshvm_audio_player_destroy();
 
 /**

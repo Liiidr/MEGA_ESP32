@@ -135,9 +135,6 @@ void joshvm_esp32_media_callback(joshvm_media_t *handle,joshvm_err_t errcode);
 
 joshvm_err_t joshvm_mep32_board_init(void);
 
-
-joshvm_err_t joshvm_esp32_audio_board_init();
-
 /**
  * @brief Create 
  *
