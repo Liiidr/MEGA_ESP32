@@ -12,20 +12,19 @@
 #include "amrwb_encoder.h"
 #include "opus_encoder.h"
 #include "esp_log.h"
-//#include "joshvm_esp32_raw_buff.h"
 
 //test
 #include "esp_sr_iface.h"
 #include "esp_sr_models.h"
 #include "esp_vad.h"
 
-
 //---define
-#define TAG  "JSOHVM_ESP32_RECORDER>>>"
+#define TAG  "JSOHVM_ESP32_RECORDER"
 //16000/1000*30ms
 #define VOICEBUFF_SIZE 480
-
-
+#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+#define CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+#endif
 //---creater cfg
 #define RECORD_RATE         48000
 #define RECORD_CHANNEL      2
@@ -54,7 +53,8 @@
 #define	A_TRACK_CHA			handle->joshvm_media_u.joshvm_media_audiotrack.channel
 #define A_TRACK_BITS		handle->joshvm_media_u.joshvm_media_audiotrack.bit_rate
 
-
+#define TRACK_CHENK_TIMEOUT 800
+uint16_t track_check_time_cnt = 0;
 typedef struct rsp_filter {
     resample_info_t *resample_info;
     unsigned char *out_buf;
@@ -104,9 +104,12 @@ static esp_err_t rsp_filter_set_dest_info(audio_element_handle_t self, int dest_
 static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type)
 {
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
-	#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
-	//#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
-		if(AUDIO_STREAM_READER == type)i2s_cfg.i2s_port = 1;		
+	#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+		printf("CONFIG_ESP_LYRAT_MINI_V1_1_BOARD\n");
+		if(AUDIO_STREAM_READER == type){
+			i2s_cfg.i2s_port = 1;		
+		}
+		i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
 	#endif
     i2s_cfg.i2s_config.use_apll = 0;
     i2s_cfg.type = type;
@@ -119,7 +122,7 @@ static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int 
     i2s_info.channels = channels;
     i2s_info.sample_rates = sample_rates;
     audio_element_setinfo(i2s_stream, &i2s_info);
-	printf("i2s_info %d  %d  %d\r\n ",i2s_info.sample_rates,i2s_info.channels,i2s_info.bits);
+	//printf("i2s_info %d  %d  %d\r\n ",i2s_info.sample_rates,i2s_info.channels,i2s_info.bits);
     return i2s_stream;
 }
 
@@ -145,7 +148,7 @@ static audio_element_handle_t create_wav_encoder(int sample_rate,int bits,int ch
 	wav_info.channels = channels;
 	wav_info.bits = bits;
 	audio_element_setinfo(wav_encoder, &wav_info);		
-	printf("wav_info %d  %d  %d\r\n ",wav_info.sample_rates,wav_info.channels,wav_info.bits);	
+	//printf("wav_info %d  %d  %d\r\n ",wav_info.sample_rates,wav_info.channels,wav_info.bits);	
 	return wav_encoder;
 }
 
@@ -160,7 +163,7 @@ static audio_element_handle_t create_amrnb_encoder(int sample_rate,int bits,int 
 	amrnb_info.channels = channels;
 	amrnb_info.bits = bits;
 	audio_element_setinfo(amrnb_en, &amrnb_info);		
-	printf("amrnb_info %d  %d  %d\r\n ",amrnb_info.sample_rates,amrnb_info.channels,amrnb_info.bits);	
+	//printf("amrnb_info %d  %d  %d\r\n ",amrnb_info.sample_rates,amrnb_info.channels,amrnb_info.bits);	
 	return amrnb_en;
 }
 
@@ -175,7 +178,7 @@ static audio_element_handle_t create_amrwb_encoder(int sample_rate,int bits,int 
 	amrwb_info.channels = channels;
 	amrwb_info.bits = bits;
 	audio_element_setinfo(amrwb_en, &amrwb_info);		
-	printf("amrwb_info %d  %d  %d\r\n ",amrwb_info.sample_rates,amrwb_info.channels,amrwb_info.bits);	
+	//printf("amrwb_info %d  %d  %d\r\n ",amrwb_info.sample_rates,amrwb_info.channels,amrwb_info.bits);	
 	return amrwb_en;
 }
 
@@ -190,7 +193,7 @@ static audio_element_handle_t create_opus_encoder(int sample_rate,int bits,int c
 	opus_info.channels = channels;
 	opus_info.bits = bits;
 	audio_element_setinfo(opus_en, &opus_info);		
-	printf("opus_info %d  %d  %d\r\n ",opus_info.sample_rates,opus_info.channels,opus_info.bits);	
+	//printf("opus_info %d  %d  %d\r\n ",opus_info.sample_rates,opus_info.channels,opus_info.bits);	
 	return opus_en;
 }
 
@@ -206,7 +209,7 @@ static audio_element_handle_t create_fatfs_stream(int sample_rates, int bits, in
     writer_info.channels = channels;
     writer_info.sample_rates = sample_rates;
     audio_element_setinfo(fatfs_stream, &writer_info);	
-	printf("fatfs_info %d  %d  %d\r\n ",writer_info.sample_rates,writer_info.channels,writer_info.bits);
+	//printf("fatfs_info %d  %d  %d\r\n ",writer_info.sample_rates,writer_info.channels,writer_info.bits);
     return fatfs_stream;
 }
  
@@ -224,6 +227,11 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	audio_element_handle_t i2s_stream_reader = create_i2s_stream(RECORD_RATE,RECORD_BITS,RECORD_CHANNEL,AUDIO_STREAM_READER);
 	//---create resample_filter
 	audio_element_handle_t filter = create_filter(RECORD_RATE,RECORD_CHANNEL,SAVE_FILE_RATE,SAVE_FILE_CHANNEL,AUDIO_CODEC_TYPE_ENCODER);
+	//---create fatfs element
+	audio_element_handle_t fatfs_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
+	//---register
+    audio_pipeline_register(recorder, i2s_stream_reader, "i2s_media_rec");
+	audio_pipeline_register(recorder, filter, "resample_media_rec");
 	
 	//---create encoder element
 	if(joshvm_meida_format_wav == handle->joshvm_media_u.joshvm_media_mediarecorder.format){
@@ -243,12 +251,7 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 		audio_pipeline_register(recorder, opus_encoder, "encode_media_rec");
 		handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.encoder = opus_encoder; 
 	}
-
-	//---create fatfs element
-	audio_element_handle_t fatfs_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
-	//---register
-    audio_pipeline_register(recorder, i2s_stream_reader, "i2s_media_rec");
-	audio_pipeline_register(recorder, filter, "resample_media_rec");
+	
 	audio_pipeline_register(recorder, fatfs_writer, "fatfs_media_rec");
     audio_pipeline_link(recorder, (const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","fatfs_media_rec"}, 4);
 	audio_element_set_uri(fatfs_writer,handle->joshvm_media_u.joshvm_media_mediarecorder.url);
@@ -297,30 +300,30 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 
 int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 {
-	int ret;
+	int ret = JOSHVM_FAIL;
 	switch(handle->media_type)
 	{
 		case MEDIA_RECORDER:
 			if(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.i2s == NULL){
 				*state = JOSHVM_MEDIA_STOPPED;//??
-				return 0;
+				return JOSHVM_OK;
 			}
 			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.i2s);
 			break;
 		case AUDIO_TRACK:
 			if(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s == NULL){
 				*state = JOSHVM_MEDIA_STOPPED;//??
-				return 0;
+				return JOSHVM_OK;
 			}
-			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s);			
+			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s);		
 			break;
 		case AUDIO_RECORDER:
 			if(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s == NULL){
 				*state = JOSHVM_MEDIA_STOPPED;//??
-				return 0;
+				return JOSHVM_OK;
 			}
 			ret = audio_element_get_state(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.i2s);
-			ret = JOSHVM_OK;
+			
 			break;
 		default :
 			ret = JOSHVM_NOT_SUPPORTED;
@@ -334,7 +337,7 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 			ret = JOSHVM_OK;
 			break;
 		case AEL_STATE_PAUSED:
-			*state = JOSHVM_MEDIA_PAUSED;			
+			*state = JOSHVM_MEDIA_PAUSED;	
 			ret = JOSHVM_OK;
 			break;
 		case AEL_STATE_RUNNING:
@@ -342,6 +345,7 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 			ret = JOSHVM_OK;
 			break;
 		default:
+			*state = JOSHVM_MEDIA_RESERVE;
 			ret = JOSHVM_FAIL;
 			break;		
 	}
@@ -351,7 +355,6 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 int joshvm_audio_track_init(joshvm_media_t* handle)
 {	
     //ESP_LOGI(TAG, "joshvm_audio_track_init");
-
 	audio_element_handle_t raw_writer = NULL;
     audio_pipeline_handle_t audio_track = NULL;
     audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
@@ -368,7 +371,7 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	raw_stream_cfg_t raw_cfg = RAW_STREAM_CFG_DEFAULT();
     raw_cfg.type = AUDIO_STREAM_WRITER;
     raw_writer = raw_stream_init(&raw_cfg);
-
+ 
     audio_pipeline_register(audio_track, i2s_stream_writer, "i2s_audio_tra");
 	audio_pipeline_register(audio_track, filter_sample_el, "upsample_audio_tra");
     audio_pipeline_register(audio_track, raw_writer, "raw_audio_tra");
@@ -379,6 +382,7 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.filter = filter_sample_el;	
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.raw_writer = raw_writer;
 	handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline = audio_track;
+	ESP_LOGE(TAG,"joshvm_audio_track_init = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	return audio_pipeline_run(audio_track);
 }
 
@@ -387,7 +391,7 @@ void joshvm_audio_track_task(void* handle)
 	QueueHandle_t que =((joshvm_media_t*)handle)->evt_que;
 	uint16_t que_val = 0;
 	uint8_t task_run = 1;
-	uint8_t read_size = 0;
+	int32_t read_size = 0;
 	uint8_t rb_callback_flag = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.rb_callback_flag;
 	void(*callback)(void*, int) = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.rb_callback;
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
@@ -397,36 +401,29 @@ void joshvm_audio_track_task(void* handle)
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
 			while(1){//playing
-				read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
-				if(read_size){
-					if(NEED_CB == rb_callback_flag){
-						rb_callback_flag = NO_NEED_CB;
-						callback(handle,JOSHVM_OK);
+				do{
+					read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
+					if(read_size){
+						track_check_time_cnt = 0;//clear  time
+						if(NEED_CB == rb_callback_flag){
+							rb_callback_flag = NO_NEED_CB;						
+							callback(handle,JOSHVM_OK);
+						}
+						//raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+						raw_stream_write(raw_writer,(char*)voicebuff,read_size);
+						//printf("track 2 valid_size = %d\n",audio_track_rb->valid_size);
 					}
-					raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-					printf("track valid_size = %d\n",audio_track_rb->valid_size);
-				}
-
-				/*
-				if((read_size) && (NEED_CB == rb_callback_flag)){
-					callback(handle,JOSHVM_OK);
-				}
-				while(read_size){//play, once have data to play
-					raw_stream_write(raw_writer,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-					printf("track valid_size = %d\n",audio_track_rb->valid_size);
-				}
-				*/
+				}while(read_size);
 				xQueueReceive(que, &que_val, 0);
-				if(que_val == QUE_TRACK_STOP){
-					printf("QUE_TRACK_STOP\n");
+				if((que_val == QUE_TRACK_STOP) && (track_check_time_cnt * 200 >= TRACK_CHENK_TIMEOUT)){
+					//printf("QUE_TRACK_STOP\n");
 					task_run = 0;
 					break;
 				}
 			}	
 			((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.callback(handle,0);			
 		}		
-	}	
-	audio_pipeline_terminate(((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
+	}
 	joshvm_audio_track_release(handle);
 	audio_free(voicebuff);
 	vTaskDelete(NULL);
@@ -449,6 +446,7 @@ int joshvm_audio_track_write(uint8_t status,ring_buffer_t* rb, unsigned char* bu
 }
 
 int joshvm_audio_recorder_init(joshvm_media_t* handle)
+
 {	
 	audio_element_handle_t raw_reader = NULL;
     audio_pipeline_handle_t audio_recorder = NULL;
@@ -483,8 +481,9 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle)
 void joshvm_audio_recorder_task(void* handle)
 {
 	QueueHandle_t que = ((joshvm_media_t*)handle)->evt_que;
+	int32_t actually_read = 0; 
 	uint16_t que_val = 0;	
-	uint32_t written_size = 0;
+	int32_t written_size = 0;
 	uint8_t rb_callback_flag = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag;
 	void(*callback)(void*, int) = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.rb_callback;
 	ring_buffer_t* audio_recorder_rb = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.rec_rb;
@@ -492,21 +491,19 @@ void joshvm_audio_recorder_task(void* handle)
 	audio_element_handle_t raw_rec = ((joshvm_media_t*)handle)->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.raw_reader;    
 
 	while(1){	
-		raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
-		written_size = ring_buffer_write(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_recorder_rb,RB_COVER);
+		actually_read = raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
+		written_size = ring_buffer_write(voicebuff,actually_read,audio_recorder_rb,RB_COVER);
 		if((written_size) && (NEED_CB == rb_callback_flag)){
 			rb_callback_flag = NO_NEED_CB;
 			callback(handle,JOSHVM_OK);
 		}
 		xQueueReceive(que, &que_val, (portTickType)0);
 		if(que_val == QUE_RECORD_STOP){
+			ESP_LOGI(TAG,"break recorder task");
 			break;
 		}
-			
-		//printf("recorder valid_size = %d\n",audio_recorder_rb->valid_size);
 	}
 	audio_free(voicebuff);
-	//ring_buffer_deinit(&audio_recorder_rb);	
 	vTaskDelete(NULL);
 }
 

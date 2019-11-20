@@ -48,17 +48,9 @@
 static const char *TAG              = "JOSHVM_Audio";
 audio_board_handle_t MegaBoard_handle = NULL;
 UBaseType_t pvCreatedTask_vadtask;
-
-
 extern esp_audio_handle_t           player;
 
 //---define
-#define MP3_2_STREAM_URI "file://userdata/bingo_2.mp3"
-#define MP3_1_STREAM_URI "file://userdata/bingo_1.mp3"
-#define MP3_STREAM_URI "file://userdata/ding.mp3"
-#define AMR_STREAM_MP3_SD_URI "file://sdcard/44100.mp3"
-#define AMR_STREAM_WAV_SD_URI "file://sdcard/48000.wav"
-
 //---fun
 extern void javanotify_simplespeech_event(int, int);
 extern void JavaTask();
@@ -81,56 +73,37 @@ void joshvm_app_init(void)
 {
     esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
-	//MegaBoard_handle = audio_board_init();
-	//audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 
-	//esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
-	//esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
     //audio_board_sdcard_init(set);
     
     app_sdcard_init();
 	app_wifi_service();
 	joshvm_vad_timer();
-	
-
-	ESP_LOGE(TAG,"before javatask iram free_size = %d\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-	/*	printf("Main task Executing on core : %d\n",xPortGetCoreID());
-
-	static char buf[1024];
-	vTaskGetRunTimeStats(buf);
+	ESP_LOGW(TAG,"Before javatask,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+	/*	
+	printf("Main task Executing on core : %d\n",xPortGetCoreID());	
+	vTaskGetRunTimeStats(buff);
 	printf("JOSHVM_Audio,Run Time Stats:\nTask Name   Time	  Percent\n%s\n", buf);	
-	vTaskList(buf);
+	vTaskList(buff);
 	printf("JOSHVM_Audio,Task List:\nTask Name	 Status   Prio	  HWM	 Task Number\n%s\n", buf);
 	*/
-	vTaskDelay(500);
+	vTaskDelay(500 / portTICK_PERIOD_MS);
 
-	while (1) {
-		/*
-		printf("MALLOC_CAP_DEFAULT\n");
-		heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
-		printf("MALLOC_CAP_8BIT\n");
-		heap_caps_print_heap_info(MALLOC_CAP_8BIT);
-		printf("MALLOC_CAP_INTERNAL\n");
-		heap_caps_print_heap_info(MALLOC_CAP_INTERNAL);
-		printf("MALLOC_CAP_SPIRAM\n");
-		heap_caps_print_heap_info(MALLOC_CAP_SPIRAM);
-		printf("\n");
-*/
-		pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );
+	while (1) {		
+		//extern void test_esp32_media(void);
 		//test_esp32_media();
-  		JavaTask(); 
+		//heap_caps_print_heap_info(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
+		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );  		
 		//JavaNativeTest();	
-		//extern void fun_test();
-		//fun_test();
-	
+		JavaTask(); 
 		
 		for (int i = 10; i >= 0; i--) {
 	        printf("Restarting in %d seconds...\n", i);
 	        vTaskDelay(10000 / portTICK_PERIOD_MS);
 	    }
 	    printf("Restarting now.\n");
-	    //fflush(stdout);
-	    //esp_restart();	  
+	    fflush(stdout);
+	    esp_restart();	  
 	}
 }
 
@@ -139,60 +112,7 @@ void joshvm_app_init(void)
  **/
 int esp32_playback_voice(int i) {
 	//NOT implemented
-	esp_err_t ret = ESP_FAIL;
-	int player_volume = 0;
-	switch(i){
-	case 0:
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	break;
-	case 1:
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	break;
-	case 2:
-
-        esp_audio_vol_get(player, &player_volume);
-        player_volume += 10;
-        if (player_volume > 100) {
-            player_volume = 100;
-        }
-        esp_audio_vol_set(player, player_volume);
-        printf("AUDIO_USER_KEY_VOL_UP [%d]\n", player_volume);
-
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	case 3:
-
-		esp_audio_vol_get(player, &player_volume);
-		player_volume -= 10;
-		if (player_volume < 0) {
-			player_volume = 0;
-		}
-		esp_audio_vol_set(player, player_volume);
-		printf("AUDIO_USER_KEY_VOL_DOWN [%d]\n", player_volume);
-
-		javanotify_simplespeech_event(2, 0);
-		return 0;
-	case 4:
-		joshvm_spiffs_audio_play_handler(MP3_STREAM_URI);		
-		return 0;
-	case 5:
-
-		joshvm_spiffs_audio_play_handler(MP3_2_STREAM_URI);
-		
-		return 0;
-	case 6:
-
-		joshvm_spiffs_audio_play_handler(MP3_1_STREAM_URI);
-		
-		return 0;
-	break;
-	default:
-	break;
-	}
-	
-	return ret;
+	return 0;
 }
 
 int esp32_record_voicefile(unsigned char* filename, int time) {
@@ -202,41 +122,14 @@ int esp32_record_voicefile(unsigned char* filename, int time) {
 
 int esp32_playback_voice_url(const char *url)
 {
-	int ret;
-	ret = joshvm_audio_play_handler(url);	
-	if(ret == ESP_ERR_AUDIO_NO_ERROR){
-
-	}
-	return ret;
+	return 0;
 }
 
 void esp32_device_control(int command) {
-	switch (command) {
-		case 0: //PAUSE
-		printf("JOSHVM_Audio:esp32_device_control: PAUSE\n");
-		rec_engine_detect_suspend(REC_VOICE_SUSPEND_ON);
-		break;
-		case 1: //RESUME
-		printf("JOSHVM_Audio:esp32_device_control: RESUME\n");
-		rec_engine_detect_suspend(REC_VOICE_SUSPEND_OFF);
-		break;
-		case 2: //LISTEN
-		printf("JOSHVM_Audio:esp32_device_control: LISTEN\n");
-		rec_engine_vad_enable(true);
-		break;
-		case 3: //SLEEP
-		printf("JOSHVM_Audio:esp32_device_control: SLEEP\n");
-		rec_engine_vad_enable(false);
-		break;
-	}
 }
 
 void esp32_stop_playback() {
-	printf("JOSHVM_Audio:esp_audio_stop\n");
-	esp_audio_stop(player, TERMINATION_TYPE_NOW);
 }
 
 void esp32_stop_record() {
-	printf("JOSHVM_Audio:rec_engine_trigger_stop\n");
-	rec_engine_trigger_stop();
 }

@@ -4,6 +4,7 @@
 
 #ifndef _APP_WIFI_SERVICE_H_
 #define _APP_WIFI_SERVICE_H_
+#include "joshvm_esp32_media.h"
 
 
 
@@ -40,8 +41,24 @@ void app_wifi_service(void);
  * @return
  *
  */
-int joshvm_esp32_wifi_set(char* ssid, char* password, int force);
+joshvm_err_t joshvm_esp32_wifi_set(char* ssid, char* password, int force);
 
+/**
+ * @brief 
+ *
+ * @note 
+ *
+ * @param [out] state
+ *				0 - UNINITIALIZED
+ *				1 - DISCONNECTED
+ *				2 - CONNECTING
+ *				3 - CONNECTED
+ *				4 - AIRKISS SETTING
+ *
+ * @return err code
+ *
+ */
+joshvm_err_t joshvm_esp32_wifi_get_state(int* state);
 
 
 

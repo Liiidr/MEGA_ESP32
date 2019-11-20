@@ -30,9 +30,7 @@
 #include "joshvm_esp32_media.h"
 #include "joshvm.h"
 #include "joshvm_esp32_ring_buff.h"
-
 #include "recorder_engine.h"
-extern UBaseType_t pvCreatedTask_vadtask;//test
 
 //---define
 #define VAD_SAMPLE_RATE_HZ 16000
@@ -41,7 +39,9 @@ extern UBaseType_t pvCreatedTask_vadtask;//test
 #define VAD_OFF_TIME 800
 #define pause_resume_flag_resume 0
 #define pause_resume_flag_pause 1
-
+#ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
+#define CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+#endif
 
 //---enum
 typedef enum {
@@ -84,16 +84,15 @@ typedef struct{
 }rec_engine_t;
 
 //---variable
-static const char *TAG = "JOSHVM_REC_ENGINE>>>>>>>";
+static const char *TAG = "JOSHVM_REC_ENGINE";
 rec_engine_t rec_engine  = {WAKEUP_DISABLE,VAD_STOP,pause_resume_flag_resume,1000,NULL,NULL};
 static int8_t need_notify_vad_stop = false;
 static uint16_t que_val = 0;
 static int8_t task_run =1;
 static QueueHandle_t vad_que = NULL;
 extern joshvm_media_t *joshvm_media_vad;
+extern uint8_t wakeup_obj_created_status;
 uint32_t vad_off_time = 0;
-
-
 
 static void rec_engine_task(void *handle)
 {
@@ -127,11 +126,10 @@ static void rec_engine_task(void *handle)
 	i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
 	i2s_cfg.i2s_config.sample_rate = 48000;
 	i2s_cfg.type = AUDIO_STREAM_READER;
-//#if defined CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
-#if defined CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
-
+#if defined CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 	i2s_cfg.i2s_port = 1;
 #endif
+	i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
 	i2s_stream_reader = i2s_stream_init(&i2s_cfg);
 
 	rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
@@ -159,7 +157,6 @@ static void rec_engine_task(void *handle)
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
-	
 		if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){
 			vad_state = vad_process(vad_inst, buff);
 			
@@ -228,21 +225,18 @@ static void rec_engine_task(void *handle)
 			rec_engine->vad_callback(1);
 			joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_STOP;
 			need_notify_vad_stop = false;	
-			vad_writer_buff_flag = 0;	
-			
+			vad_writer_buff_flag = 0;			
 		}		
 
 		if(rec_engine->wakeup_state == WAKEUP_ENABLE){
 			int keyword = model->detect(iface, (int16_t *)buff);
 			switch (keyword) {
 				case WAKE_UP:
-					ESP_LOGI(TAG, "Wake up");					
-					printf("vad task free stack :				%d\n",pvCreatedTask_vadtask);				
-					printf("xPortGetMinimumEverFreeHeapSize :   %d\n",xPortGetMinimumEverFreeHeapSize());				
-					ESP_LOGE(TAG,"wakeup iram free_size = %d\r\n%s\n",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__);
-					//extern void joshvm_spiffs_audio_play_handler(const char *url);
-					//joshvm_spiffs_audio_play_handler("/userdata/ding.mp3");
-				
+					ESP_LOGI(TAG, "Wake up");
+					//ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+					//printf("vad task free stack :				%d\n",pvCreatedTask_vadtask);
+					//printf("xPortGetMinimumEverFreeHeapSize :   %d\n",xPortGetMinimumEverFreeHeapSize());
+
 					if(rec_engine->wakeup_callback != NULL){
 						rec_engine->wakeup_callback(0);
 					}
@@ -255,7 +249,6 @@ static void rec_engine_task(void *handle)
 	}
     ESP_LOGI(TAG, "[ 5 ] Destroy VAD");
     vad_destroy(vad_inst);
-
 	ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline");	
 	audio_pipeline_terminate(pipeline);	
 	/* Terminate the pipeline before removing the listener */
@@ -269,7 +262,6 @@ static void rec_engine_task(void *handle)
 	audio_element_deinit(i2s_stream_reader);
 	audio_element_deinit(filter);
 
-	ESP_LOGI(TAG, "[ 7 ] Destroy model");
 	model->destroy(iface);
 	model = NULL;
 	free(buff);
@@ -307,7 +299,6 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 	
 	ESP_LOGE(TAG,"before wakeup  heap free_size = %d,%s,%d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT),__FILE__,__LINE__);
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
-
 	return 0;
 }
 
@@ -328,7 +319,6 @@ esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type)
 	if((rec_engine->wakeup_state == WAKEUP_DISABLE) && (rec_engine->vad_state == VAD_STOP)){
 		task_run = 0;
 	}
-	
 	return 0;
 }
 
@@ -351,20 +341,20 @@ int joshvm_esp32_wakeup_get_word(int pos, int* index, char* wordbuf, int wordlen
 
 int joshvm_esp32_wakeup_enable(void(*callback)(int))
 {
+	int8_t ret;
+	extern int8_t create_cnt;
+
     if(rec_engine.wakeup_state == WAKEUP_ENABLE){
 		ESP_LOGW(TAG,"wakeup has already enable");
 		return JOSHVM_INVALID_STATE;
 	}
 
-	int8_t ret;
-	extern int8_t create_cnt;
+	wakeup_obj_created_status = OBJ_CREATED;
 	if(create_cnt == 0){
-		if(joshvm_esp32_audio_board_init() != JOSHVM_OK){
-			ESP_LOGI(TAG,"AUDIO BOARD INIT FAIL!");
+		if(joshvm_mep32_board_init() != JOSHVM_OK){
 			return JOSHVM_FAIL;
 		}
 		create_cnt++;
-		vTaskDelay(200);
 	}
 	
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_enable");
@@ -376,12 +366,14 @@ int joshvm_esp32_wakeup_enable(void(*callback)(int))
 
 int joshvm_esp32_wakeup_disable()
 {
+	int8_t ret;
     if(rec_engine.wakeup_state == WAKEUP_DISABLE){
 		ESP_LOGW(TAG,"Can't disable wakeup when have not enable");
 		return JOSHVM_INVALID_STATE;
 	}
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_disable");
-	int8_t ret;
+
+	wakeup_obj_created_status = OBJ_CREATED_NOT;
 	ret = joshvm_rec_engine_destroy(&rec_engine,WAKEUP_DISABLE);		
 	return ret;
 }
@@ -400,7 +392,7 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 	ESP_LOGI(TAG,"joshvm_esp32_vad_start");
 	ring_buffer_flush(joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
-	printf("vad ringbuffer data valid size = %d\n",joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
+	ESP_LOGI(TAG,"flush rb when vad start,vad ringbuffer data valid size = %d\n",joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb->valid_size);
 	joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.status = AUDIO_START;	
 	int8_t ret;
 	rec_engine.vad_off_time = VAD_OFF_TIME;
@@ -412,8 +404,6 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 int joshvm_esp32_vad_pause()
 {
-	printf("joshvm_esp32_vad_pause-------------\n");
-
 	if(rec_engine.pause_resume_flag == pause_resume_flag_resume){
 		rec_engine.pause_resume_flag = pause_resume_flag_pause;
 		rec_engine.vad_state = VAD_PAUSE;
@@ -425,7 +415,6 @@ int joshvm_esp32_vad_pause()
 
 int joshvm_esp32_vad_resume()
 {
-	printf("joshvm_esp32_vad_resume-----------------\n");
 	if(rec_engine.pause_resume_flag == pause_resume_flag_pause){
 		rec_engine.pause_resume_flag = pause_resume_flag_resume;
 		rec_engine.vad_state = VAD_RESUME;
@@ -451,29 +440,5 @@ int joshvm_esp32_vad_set_timeout(int ms)
 {
 	rec_engine.vad_off_time = ms;
 	return JOSHVM_OK;
-}
-
-//--test-------------------
-
-void test_callback(int index)
-{
-	printf("wakeup   callback  index = %d\n",index);
-	
-}
-
-void test_vad_callback(int index)
-{
-	printf("vad   callback  ---------------- index = %d\n",index);
-	
-}
-
-void test_rec_engine(void)
-{
-
-	joshvm_esp32_wakeup_enable(test_callback);
-
-	joshvm_esp32_vad_start(test_vad_callback);
-
-
 }
 

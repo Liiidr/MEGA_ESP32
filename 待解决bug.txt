@@ -27,10 +27,11 @@ main	203508
 SD	197676	196548
 wifi	122280	119676
 mediaplayer create	39024
-wakeup 	38284
+
+wakeup 	38284		唤醒时
 Vad created 38140
 vad close 	37128
-player start 37128
+player start 37128				player 25
 player end  12876
 
 
@@ -45,6 +46,25 @@ after audio_rec init	    84088 	 		初始化audio_rec  pipeline                 
 after audio_rec task  81664			audio_rec  task	2.5k 
 before track init   89448
 
-问天气
+wake + vad       加起来耗 30k
+wakeup_enable	106632
+before wakeup 	101920
+after wakeup	  97676
+pipeline 		20+k
+before vad 	76256
+after vad 		75516
 
+
+main 	203508		初始运行程序
+wifi	74k		占用	
+javatask	13k		从进入Javatask 到 第一次调用底层接口
+wake+vad 30k		（包含一个完整的pipeline）
+player	25k	
+（pipeline	22k		一个完整的pipeline	）	
+
+1、内存不足，报http element task create err  
+     程序运行的主要资源有wifi+Javatask+player+wakeup+vad 加起来大概是130k
+
+2、I2S: Register I2S Interrupt error  
+     没有空闲中断
 

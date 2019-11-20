@@ -46,26 +46,22 @@
 #include "aac_decoder.h"
 #include "http_stream.h"
 #include "filter_resample.h"
-
 #include "joshvm_esp32_player.h"
 #include "joshvm.h"
-#include "joshvm_esp32_media.h"//test
-
+//---variable
 esp_audio_handle_t player;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
-static audio_pipeline_handle_t pipeline;
-static audio_element_handle_t i2s_stream,spiffs_stream,mp3_decoder,filter;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
-
+//---struct
 typedef struct{
 	QueueHandle_t que;
 	joshvm_media_t* handle;
 }esp_audio_state_task_t;
-static esp_audio_state_task_t esp_audio_state_task_param = {NULL,NULL};
+esp_audio_state_task_t esp_audio_state_task_param = {NULL,NULL};
+
 extern void javanotify_simplespeech_event(int, int);
-static void joshvm_spiffs_audio_play_init(joshvm_media_t *handle);
 
 static void esp_audio_state_task (void *para)
 {
@@ -75,19 +71,18 @@ static void esp_audio_state_task (void *para)
     while (1) {
         xQueueReceive(que, &esp_state, portMAX_DELAY);
         ESP_LOGI(TAG, "esp_auido status:%x,err:%x", esp_state.status, esp_state.err_msg);
-        if ((esp_state.status == AUDIO_STATUS_STOPED)
+        if ((esp_state.status == 3)//AUDIO_STATUS_STOPED)
             || (esp_state.status == AUDIO_STATUS_FINISHED)
-            || (esp_state.status == AUDIO_STATUS_ERROR)) {	
-			joshvm_esp32_media_callback(handle);
-			//break;//???
-        } 
+            || (esp_state.status == AUDIO_STATUS_ERROR)) {
+            joshvm_err_t errcode;
+			if(esp_state.status == AUDIO_STATUS_ERROR){
+				errcode = JOSHVM_FAIL;
+			}else{
+				errcode = JOSHVM_OK;	
+			}
+			joshvm_esp32_media_callback(handle,errcode);
+        } 			
     }
-	/*//vQueueDelete(que);
-	if(para != NULL){
-		audio_free(para);
-		para = NULL;
-	}
-    vTaskDelete(NULL);*/
 }
 
 int _http_stream_event_handle(http_stream_event_msg_t *msg)
@@ -118,13 +113,17 @@ static void setup_player(joshvm_media_t* handle)
     player = esp_audio_create(&cfg);
 
 	esp_audio_state_task_param.que = cfg.evt_que;
-	esp_audio_state_task_param.handle = handle;
+	esp_audio_state_task_param.handle = handle; 
 	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, (void*)&esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
 
     // Create readers and add to esp_audio
     fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
     fs_reader.type = AUDIO_STREAM_READER;
     esp_audio_input_stream_add(player, fatfs_stream_init(&fs_reader));
+
+	spiffs_stream_cfg_t spiffs_reader = SPIFFS_STREAM_CFG_DEFAULT();
+    spiffs_reader.type = AUDIO_STREAM_READER;
+    esp_audio_input_stream_add(player, spiffs_stream_init(&spiffs_reader));
 	
     http_stream_cfg_t http_cfg = HTTP_STREAM_CFG_DEFAULT();
     http_cfg.event_handle = _http_stream_event_handle;
@@ -136,6 +135,7 @@ static void setup_player(joshvm_media_t* handle)
     i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
     i2s_writer.i2s_config.sample_rate = 48000;
     i2s_writer.type = AUDIO_STREAM_WRITER;
+	i2s_writer.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
     esp_audio_output_stream_add(player, i2s_stream_init(&i2s_writer));
 
     // Add decoders and encoders to esp_audio
@@ -146,7 +146,7 @@ static void setup_player(joshvm_media_t* handle)
     mp3_dec_cfg.task_core = 1;
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
     aac_cfg.task_core = 1;
-    esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, aac_decoder_init(&aac_cfg));
+    //esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, aac_decoder_init(&aac_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, wav_decoder_init(&wav_dec_cfg));
 	//esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, amr_decoder_init(&amr_dec_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, mp3_decoder_init(&mp3_dec_cfg));
@@ -159,9 +159,6 @@ static void setup_player(joshvm_media_t* handle)
     audio_element_set_tag(ts_dec_cfg, "ts");
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, ts_dec_cfg);
 
-    // Set default volume
-    //esp_audio_vol_set(player, 50);
-    audio_hal_set_volume(MegaBoard_handle->audio_hal,60);
     AUDIO_MEM_SHOW(TAG);
     ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
@@ -169,7 +166,6 @@ static void setup_player(joshvm_media_t* handle)
 void joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
     setup_player(handle);
-	joshvm_spiffs_audio_play_init(handle);
 }
 
 void joshvm_audio_player_destroy()
@@ -185,96 +181,6 @@ int joshvm_audio_play_handler(const char *url)
     ESP_LOGI(TAG, "Playing : %s", url);
     ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
 	return ret;
-}
-
-static void joshvm_audio_state_task (void *handle)
-{
-	audio_event_iface_cfg_t evt_cfg = AUDIO_EVENT_IFACE_DEFAULT_CFG();
-    audio_event_iface_handle_t evt = audio_event_iface_init(&evt_cfg);
-
-	audio_pipeline_set_listener(pipeline, evt);
-	while(1)
-	{
-        audio_event_iface_msg_t msg;
-        esp_err_t ret = audio_event_iface_listen(evt, &msg, portMAX_DELAY);
-        if (ret != ESP_OK) {
-            ESP_LOGE(TAG, "[ * ] Event interface error : %d", ret);
-            continue;
-        }
-
-        if (msg.source_type == AUDIO_ELEMENT_TYPE_ELEMENT && msg.source == (void *) i2s_stream
-            && msg.cmd == AEL_MSG_CMD_REPORT_STATUS
-            && (((int)msg.data == AEL_STATUS_STATE_STOPPED) || ((int)msg.data == AEL_STATUS_STATE_FINISHED))) {
-            ESP_LOGI(TAG, "[ * ] bing end!");
-			audio_pipeline_terminate(pipeline);	
-			joshvm_esp32_media_callback(handle);
-            //break;//???
-        }
-	}
-    audio_pipeline_terminate(pipeline);
-    audio_pipeline_unregister(pipeline, spiffs_stream);
-    audio_pipeline_unregister(pipeline, mp3_decoder);
-    audio_pipeline_unregister(pipeline, filter); 
-	audio_pipeline_unregister(pipeline, i2s_stream);
-    audio_pipeline_remove_listener(pipeline);
-
-    audio_event_iface_destroy(evt);
-    audio_pipeline_deinit(pipeline);
-    audio_element_deinit(spiffs_stream);
-    audio_element_deinit(mp3_decoder);
-    audio_element_deinit(i2s_stream);
-	audio_element_deinit(filter);
-
-    vTaskDelete(NULL);
-}
-
-static void joshvm_spiffs_audio_play_init(joshvm_media_t* handle)
-{
-    audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
-	pipeline = audio_pipeline_init(&pipeline_cfg);
-
-	spiffs_stream_cfg_t spiffs_cfg = SPIFFS_STREAM_CFG_DEFAULT();
-    spiffs_cfg.type = AUDIO_STREAM_READER;
-    spiffs_stream  = spiffs_stream_init(&spiffs_cfg);
-
-    i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
-    i2s_cfg.type = AUDIO_STREAM_WRITER;
-    i2s_stream = i2s_stream_init(&i2s_cfg);
-
-   	//wav_decoder_cfg_t wav_cfg = DEFAULT_WAV_DECODER_CONFIG();
-    //audio_element_handle_t wav_decoder = wav_decoder_init(&wav_cfg); 
-
-	mp3_decoder_cfg_t mp3_cfg = DEFAULT_MP3_DECODER_CONFIG();
-	mp3_decoder = mp3_decoder_init(&mp3_cfg); 
-
-    rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
-    rsp_cfg.src_rate = 16000;
-    rsp_cfg.src_ch = 1;
-    rsp_cfg.dest_rate = 48000;
-    rsp_cfg.dest_ch = 2;
-    rsp_cfg.type = AUDIO_CODEC_TYPE_DECODER;
-    filter = rsp_filter_init(&rsp_cfg);
-
-	audio_pipeline_register(pipeline, spiffs_stream,     "file_reader");
-    audio_pipeline_register(pipeline, mp3_decoder,       "mp3_decoder");
-    audio_pipeline_register(pipeline, filter,   		 "filter_upsample");
-    audio_pipeline_register(pipeline, i2s_stream,        "i2s_writer");
-	
-	audio_pipeline_link(pipeline, (const char *[]) {"file_reader", "mp3_decoder", "filter_upsample", "i2s_writer"}, 4);
-
-	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 2 * 1024, handle, JOSHVM_AUDIO_STATE_TASK_PRI, NULL);
-}
-
-void joshvm_spiffs_audio_play_handler(const char *url)
-{
-	audio_element_set_uri(spiffs_stream, url);
-    int ret = audio_pipeline_run(pipeline);
-	printf("Tone pipeline run ret = %d\n",ret);
-}
-
-void joshvm_spiffs_audio_stop_handler(void)
-{
-	audio_pipeline_terminate(pipeline);
 }
 
 audio_err_t joshvm_audio_pause(void)
@@ -328,29 +234,45 @@ audio_err_t joshvm_audio_time_get(int *time)
 
 audio_err_t joshvm_volume_get_handler(int *volume)
 {	
-	 if(audio_hal_get_volume(MegaBoard_handle->audio_hal,volume) == ESP_OK){
-	 	ESP_LOGI(TAG, "[ * ] Get volume: %d %%", *volume);
-		return  ESP_OK;
-	 }
-	 return  ESP_FAIL;
+	if(MegaBoard_handle != NULL){
+		ESP_LOGI(TAG, "[ * ] Get volume1: %d %%", *volume);
+		 if(audio_hal_get_volume(MegaBoard_handle->audio_hal,volume) == ESP_OK){
+		 	ESP_LOGI(TAG, "[ * ] Get volume: %d %%", *volume);
+			return  ESP_OK;
+		 }
+	}
+	return  ESP_FAIL;
 }
 
 audio_err_t joshvm_volume_set_handler(int volume)
 {
-	if((volume >= 0) && (volume <= 100)){
-		if(audio_hal_set_volume(MegaBoard_handle->audio_hal, volume) == ESP_OK){
-			ESP_LOGI(TAG, "[ * ] Volume set to %d %%", volume);
-			return ESP_OK;
-		}
+	if(MegaBoard_handle == NULL){
+		ESP_LOGE(TAG,"Can't set volume,before instantiate a object");
+		return ESP_FAIL;
 	}
-	ESP_LOGI(TAG, "volume: %d illegal", volume);
+	
+	if(volume < 0){
+		volume = 0;
+	}
+	if(volume > 100){
+		volume = 100;
+	}	
+
+	if(audio_hal_set_volume(MegaBoard_handle->audio_hal, volume) == ESP_OK){
+		ESP_LOGI(TAG, "[ * ] Volume set to %d %%", volume);
+		return ESP_OK;
+	}
 	return ESP_FAIL;
 }
 
 void joshvm_volume_adjust_handler(int volume)
 {
-    //ESP_LOGI(TAG, "adj_volume by %d", volume);
     int vol = 0;
+	if(MegaBoard_handle == NULL){
+		ESP_LOGE(TAG,"Can't adjust volume,before instantiate a object");
+		return ;
+	}
+		
 	audio_hal_get_volume(MegaBoard_handle->audio_hal,&vol);
     vol += volume;
 	if(vol > 100)vol = 100;
