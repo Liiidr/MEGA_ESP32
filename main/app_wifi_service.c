@@ -16,35 +16,39 @@
 #include "joshvm_esp32_media.h"
 #include "esp_spiffs.h"
 
-static const char *TAG              = "APP_WIFI_SERVICE>>>>>>>";
-static periph_service_handle_t wifi_serv = NULL;
-QueueHandle_t app_wifi_serv_queue = NULL;
-uint8_t led_flash = 2;
-#define FLASH_OFF	0
-#define FLASH_SLOW	1
-#define FLASH_FAST	2
-#define FLASH_ON	3
-#define FLASH_NONE	4
-
+static const char *TAG              = "APP_WIFI_SERVICE";
 
 #define SSID_LENGTH	32
 #define PASSWD_LENGTH 64
 #define	PROPERTY_CFG	1
 #define LAST_AIRKISS_CFG 2
 #define	AIRKISS_CFG	3
-#define BLINK_GPIO GPIO_NUM_22
 
+//---enum
+typedef enum{
+	UNINITIALIZED = 0,
+	DISCONNECTED,
+	CONNECTING,
+	CONNECTED,
+	AIRKISS_SETTING
+}app_wifi_state_e;
+
+//---struct
 typedef struct{
 	char property_ssid[SSID_LENGTH];
 	char property_password[PASSWD_LENGTH];
 }app_wifi_propsta_config_t;
-static app_wifi_propsta_config_t *app_wifi_config = NULL;
 
 typedef struct{
 	char *ssid;
 	char *passwd;
 }app_wifi_aksta_config_t;
+
+static periph_service_handle_t wifi_serv = NULL;
 static app_wifi_aksta_config_t *ak_sta = NULL;
+static app_wifi_propsta_config_t *app_wifi_config = NULL;
+uint8_t app_wifi_state = UNINITIALIZED;
+QueueHandle_t app_wifi_serv_queue = NULL;
 
 
 static void wifi_config_init()
@@ -129,6 +133,7 @@ void app_wifi_get_airkisscfg(char *ssid,char *pwd)
 
 static joshvm_err_t app_wifi_airkiss_cfg_connect()
 {
+	printf("wifi connecting with airkiss profile SSID and PASSWD.\n");
 	if(app_wifi_airkissprofile_read() != JOSHVM_OK){
 		return JOSHVM_FAIL;
 	}
@@ -143,6 +148,12 @@ static joshvm_err_t app_wifi_airkiss_cfg_connect()
 
 static joshvm_err_t app_wifi_property_cfg_connect()
 {
+	printf("wifi connecting with property SSID and PASSWD.\n");
+	if((strlen(app_wifi_config->property_ssid) == 0)  || (strlen(app_wifi_config->property_password)) == 0){
+		ESP_LOGE(TAG,"Property file's ssid or passwd is null!");
+		return JOSHVM_FAIL;
+	}
+
 	wifi_config_t sta_cfg = {0};
 	strncpy((char *)&sta_cfg.sta.ssid,(const char*)(app_wifi_config->property_ssid), strlen(app_wifi_config->property_ssid));
 	strncpy((char *)&sta_cfg.sta.password,(const char*)(app_wifi_config->property_password), strlen(app_wifi_config->property_password));
@@ -152,18 +163,26 @@ static joshvm_err_t app_wifi_property_cfg_connect()
 	return JOSHVM_OK;
 }
 
+static void app_wifi_airkiss_enable()
+{
+	printf("enable airkiss.\n");
+	app_wifi_state = AIRKISS_SETTING;
+	wifi_service_setting_start(wifi_serv, 0);
+}
+
 static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_service_event_t *evt, void *ctx)
 {
-    ESP_LOGD(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
+    ESP_LOGE(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
              evt->type, evt->source, evt->data, evt->len, ctx);
+	ESP_LOGE(TAG,"state = %d",wifi_service_state_get(wifi_serv));
 			 
 	if(evt->type == WIFI_SERV_EVENT_CONNECTING){
         ESP_LOGI(TAG, "PERIPH_WIFI_CONNECTING [%d]", __LINE__);
-		led_flash = FLASH_FAST;
+		app_wifi_state = CONNECTING;
 	}
 	else if (evt->type == WIFI_SERV_EVENT_CONNECTED) {		
         ESP_LOGI(TAG, "PERIPH_WIFI_CONNECTED [%d]", __LINE__);
-		led_flash = FLASH_ON;
+		app_wifi_state = CONNECTED;
 			
     } else if (evt->type == WIFI_SERV_EVENT_DISCONNECTED) {
         ESP_LOGI(TAG, "PERIPH_WIFI_DISCONNECTED [%d]", __LINE__);
@@ -174,7 +193,6 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
 		ESP_LOGI(TAG, "SWIFI_SERV_EVENT_SETTING_TIMEOUT [%d]", __LINE__);
 		
     }
-
     return ESP_OK;
 }
 
@@ -184,13 +202,12 @@ static void app_wifi_task(void *parameter)
 	int8_t cnt = 0;	
 
 	while(1){
-		xQueueReceive(app_wifi_serv_queue, &r_queue, portMAX_DELAY);		
-
+		xQueueReceive(app_wifi_serv_queue, &r_queue, portMAX_DELAY);
 		switch(r_queue){
 			case	APP_WIFI_SERV_DISCONNECTED:
 				wifi_service_connect(wifi_serv);
 				ESP_LOGI(TAG,"APP_WIFI_SERV_DISCONNECTED");
-				led_flash = FLASH_OFF;
+				app_wifi_state = DISCONNECTED;
 			
 				break;
 			case	APP_WIFI_SERV_RECONNECTEDFAILED:				
@@ -198,68 +215,32 @@ static void app_wifi_task(void *parameter)
 				cnt++;				
 				if(cnt > 3) cnt = 1;				
 				switch(cnt){
-					case	PROPERTY_CFG:
-						printf("wifi connecting with property SSID and PASSWD.\n");
-						led_flash = FLASH_FAST;
-						app_wifi_property_cfg_connect();
-					break;
-					case	LAST_AIRKISS_CFG:
-						printf("wifi connecting with airkiss profile SSID and PASSWD.\n");
-						led_flash = FLASH_FAST;
-						if(app_wifi_airkiss_cfg_connect() == JOSHVM_FAIL){
-							printf("enable airkiss.\n");
-							led_flash = FLASH_SLOW;
-							wifi_service_setting_start(wifi_serv, 0);
+					case	PROPERTY_CFG:						
+						app_wifi_state = CONNECTING;
+						if(app_wifi_property_cfg_connect() == JOSHVM_OK){
+							break;
 						}
-						
+					//if property profile connect fail,it is need to connect airkiss profile without break case PROPERTY_CFG
+						cnt++;
+					case	LAST_AIRKISS_CFG:						
+						app_wifi_state = CONNECTING;
+						if(app_wifi_airkiss_cfg_connect() == JOSHVM_FAIL){
+							app_wifi_airkiss_enable();
+						}						
 					break;
 					case 	AIRKISS_CFG:
-						printf("enable airkiss.\n");
-						led_flash = FLASH_SLOW;
-						wifi_service_setting_start(wifi_serv, 0);
+						app_wifi_airkiss_enable();
 					default:
 
 					break;
 				}	
 				break;
 			default:
-
 				break;
 		}
-
-
 	}
 }
 
-void app_wifi_blink_task(void *para)
-{
-	int8_t ret;
-	gpio_pad_select_gpio(BLINK_GPIO);
-	gpio_set_direction(BLINK_GPIO,GPIO_MODE_OUTPUT);
-	while(1){
-			  
-		
-		if(led_flash == FLASH_SLOW){
-			gpio_set_level(BLINK_GPIO,0);
-			vTaskDelay(1000 / portTICK_PERIOD_MS);
-			gpio_set_level(BLINK_GPIO,1);
-			vTaskDelay(1000 / portTICK_PERIOD_MS);
-		}else if(led_flash == FLASH_FAST){
-			gpio_set_level(BLINK_GPIO,0);
-			vTaskDelay(200/ portTICK_PERIOD_MS);
-			gpio_set_level(BLINK_GPIO,1);
-			vTaskDelay(200/ portTICK_PERIOD_MS);
-		}else if(led_flash == FLASH_OFF){
-			gpio_set_level(BLINK_GPIO,0);
-			led_flash = FLASH_NONE;
-		}else if(led_flash == FLASH_ON){
-			gpio_set_level(BLINK_GPIO,1);
-			led_flash = FLASH_NONE;
-		}else{
-			vTaskDelay(500/ portTICK_PERIOD_MS);
-		}
-	}
-}
 
 void app_wifi_service(void)
 {
@@ -291,27 +272,29 @@ void app_wifi_service(void)
 	//wifi_service_set_sta_info(wifi_serv, &sta_cfg);
 	
 	xTaskCreate(app_wifi_task,"app_wifi_task",3*1024,NULL,5,NULL);	
-	xTaskCreate(app_wifi_blink_task,"app_wifi_blink_task",2*1024,NULL,2,NULL);
 }
 
-int joshvm_esp32_wifi_set(char* ssid, char* password, int force)
+joshvm_err_t joshvm_esp32_wifi_set(char* ssid, char* password, int force)
 {
 	int ret = JOSHVM_FAIL;
+	ESP_LOGE(TAG,"force = %d",force);
+	if((strlen(ssid) == 0)  || (strlen(password)) == 0){
+		ESP_LOGE(TAG,"Property file's ssid or passwd is null!");
+		return JOSHVM_FAIL;
+	}
 
 	strncpy(app_wifi_config->property_ssid,ssid,strlen(ssid));
 	strncpy(app_wifi_config->property_password ,password,strlen(password));
 	
 	if(force == false){
-		//ret = wifi_service_state_get(wifi_serv);
-		//if(ret == PERIPH_SERVICE_STATE_RUNNING){
-		ESP_LOGI(TAG,"if saved ssid pwd can't connect,property cfg will be set!");
+		ESP_LOGI(TAG,"if saved ssid pwd can't connect,property cfg will be set and then connecting wifi!");
 		return JOSHVM_NOTIFY_LATER; 
-		//} 
 	}
 	ESP_LOGI(TAG,"joshvm_esp32_wifi_set!");
+	wifi_service_setting_stop(wifi_serv,0);
 	wifi_config_t sta_cfg = {0};
 	strncpy((char *)&sta_cfg.sta.ssid,ssid, strlen(ssid));
-	strncpy((char *)&sta_cfg.sta.password,password, strlen(password));
+	strncpy((char *)&sta_cfg.sta.password,password, strlen(password));	
 	ret = wifi_service_set_sta_info(wifi_serv, &sta_cfg);
 		
 	if(ret == ESP_OK){
@@ -320,5 +303,10 @@ int joshvm_esp32_wifi_set(char* ssid, char* password, int force)
 	return JOSHVM_FAIL;
 }
 
+joshvm_err_t joshvm_esp32_wifi_get_state(int* state)
+{
+	*state = app_wifi_state;
+	return JOSHVM_OK;
+}
 
 

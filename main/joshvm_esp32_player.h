@@ -26,25 +26,13 @@
 #define JOSHVM_AUDIO_WRAPPER_H
 #include "joshvm_esp32_media.h"
 
-//#include "lightduer_dcs.h"
-//typedef  int duer_audio_play_type_t;
-/*
-typedef enum {
-    JOSHVM_AUDIO_TYPE_UNKOWN,
-    JOSHVM_AUDIO_TYPE_SPEECH,
-    JOSHVM_AUDIO_TYPE_MUSIC,
-} joshvm_audio_type_t;
-*/
 
 /*
  * @brief DCS init function
  *
  */
 void joshvm_audio_wrapper_init(joshvm_media_t* handle);
-
 void joshvm_audio_player_destroy();
-
-
 
 /**
  * DESC:

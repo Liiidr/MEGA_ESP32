@@ -18,7 +18,7 @@
 #include "sdmmc_cmd.h"
 #include "sd_card_init.h"
 
-static const char *TAG = "example";
+static const char *TAG = "SDCARD";
 
 // This example can use SDMMC and SPI peripherals to communicate with SD card.
 // By default, SDMMC peripheral is used.

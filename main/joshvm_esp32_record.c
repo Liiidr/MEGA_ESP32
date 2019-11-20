@@ -12,16 +12,14 @@
 #include "amrwb_encoder.h"
 #include "opus_encoder.h"
 #include "esp_log.h"
-//#include "joshvm_esp32_raw_buff.h"
 
 //test
 #include "esp_sr_iface.h"
 #include "esp_sr_models.h"
 #include "esp_vad.h"
 
-
 //---define
-#define TAG  "JSOHVM_ESP32_RECORDER>>>"
+#define TAG  "JSOHVM_ESP32_RECORDER"
 //16000/1000*30ms
 #define VOICEBUFF_SIZE 480
 #ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
@@ -112,7 +110,6 @@ static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int 
 			i2s_cfg.i2s_port = 1;		
 		}
 		i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
-
 	#endif
     i2s_cfg.i2s_config.use_apll = 0;
     i2s_cfg.type = type;
@@ -230,7 +227,6 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	audio_element_handle_t i2s_stream_reader = create_i2s_stream(RECORD_RATE,RECORD_BITS,RECORD_CHANNEL,AUDIO_STREAM_READER);
 	//---create resample_filter
 	audio_element_handle_t filter = create_filter(RECORD_RATE,RECORD_CHANNEL,SAVE_FILE_RATE,SAVE_FILE_CHANNEL,AUDIO_CODEC_TYPE_ENCODER);
-	
 	//---create fatfs element
 	audio_element_handle_t fatfs_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
 	//---register
@@ -265,12 +261,6 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.filter = filter;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.stream_writer = fatfs_writer;
 	handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline = recorder;
-
-
-	audio_pipeline_run(recorder);
-	vTaskDelay(2000);
-	audio_pipeline_terminate( recorder);
-	
     return JOSHVM_OK;
 }
 
@@ -512,11 +502,8 @@ void joshvm_audio_recorder_task(void* handle)
 			ESP_LOGI(TAG,"break recorder task");
 			break;
 		}
-			
-		//printf("recorder valid_size = %d\n",audio_recorder_rb->valid_size);
 	}
 	audio_free(voicebuff);
-	//ring_buffer_deinit(&audio_recorder_rb);	
 	vTaskDelete(NULL);
 }
 

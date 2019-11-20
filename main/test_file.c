@@ -33,12 +33,13 @@ void *handle_media_player_test = NULL;
 void *handle_track_test = NULL;
 void *handle_recorder_test = NULL;
 void test_esp32_media(void);
-
+static int callback_temp = 1;
 
 #define MP3_URI_TEST "file://sdcard/48000.wav"
 
 static void media_player_callback_test(void*handle,int para)
 {
+	callback_temp = 0;
 	ESP_LOGI(TAG,"media_player_callback");
 }
 
@@ -121,6 +122,26 @@ void fun_test()
 }
 
 
+void player_test()
+{
+
+
+	joshvm_esp32_media_set_source(handle_media_player_test,"/userdata/ding.mp3");
+	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
+	while(callback_temp);
+
+
+	joshvm_esp32_media_set_source(handle_media_player_test,test_url);
+	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
+	//while(callback_temp);
+	
+	
+	vTaskDelay(2000 / portTICK_PERIOD_MS);
+	//joshvm_esp32_media_stop(handle_media_player_test);
+	//vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+
+}
 
 void test_esp32_media(void)
 {
@@ -138,8 +159,8 @@ void test_esp32_media(void)
 	
 
 
-	//joshvm_esp32_media_create(0,&handle_media_player_test);
-	joshvm_esp32_media_create(1,&handle_media_rec_test);
+	joshvm_esp32_media_create(0,&handle_media_player_test);
+	//joshvm_esp32_media_create(1,&handle_media_rec_test);
 	//joshvm_esp32_media_create(2,&handle_track_test);
 	//joshvm_esp32_media_create(3,&handle_recorder_test);
 	//joshvm_esp32_vad_start(test_vad_callback);
@@ -185,11 +206,7 @@ void test_esp32_media(void)
 */
 
 /*
-	joshvm_esp32_media_set_source(handle_media_player_test,"/userdata/ding.mp3");
-	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
-	//vTaskDelay(10000 / portTICK_PERIOD_MS);
-	//joshvm_esp32_media_stop(handle_media_player_test);
-	//vTaskDelay(1000 / portTICK_PERIOD_MS); 
+ 
 */
 
 /*

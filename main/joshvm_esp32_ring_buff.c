@@ -6,7 +6,7 @@
 #include "audio_mem.h"
 #include "joshvm_esp32_ring_buff.h"
 
-#define TAG "JOSHVM_ESP32_RAW_BUFF>>>"
+#define TAG "JOSHVM_ESP32_RAW_BUFF"
 
 void ring_buffer_init(ring_buffer_t *rb, int32_t buff_size)
 {

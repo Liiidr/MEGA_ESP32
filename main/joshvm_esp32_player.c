@@ -46,19 +46,15 @@
 #include "aac_decoder.h"
 #include "http_stream.h"
 #include "filter_resample.h"
-
 #include "joshvm_esp32_player.h"
 #include "joshvm.h"
-#include "joshvm_esp32_media.h"//test
-
+//---variable
 esp_audio_handle_t player;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
-static audio_pipeline_handle_t pipeline;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
-
-
+//---struct
 typedef struct{
 	QueueHandle_t que;
 	joshvm_media_t* handle;
@@ -88,8 +84,6 @@ static void esp_audio_state_task (void *para)
 			//break;//???
         } 			
     }
-
-    //vTaskDelete(NULL);
 }
 
 int _http_stream_event_handle(http_stream_event_msg_t *msg)
@@ -167,9 +161,6 @@ static void setup_player(joshvm_media_t* handle)
     audio_element_set_tag(ts_dec_cfg, "ts");
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, ts_dec_cfg);
 
-    // Set default volume
-    //esp_audio_vol_set(player, 50);
-    audio_hal_set_volume(MegaBoard_handle->audio_hal,60);
     AUDIO_MEM_SHOW(TAG);
     ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }

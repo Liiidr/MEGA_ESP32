@@ -447,9 +447,6 @@ int joshvm_esp32_media_add_volume();
 int joshvm_esp32_media_sub_volume();
 
 
-//int joshvm_esp32_media_release(void* handle);
-
-
 
 #endif
 
