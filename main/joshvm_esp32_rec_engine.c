@@ -153,13 +153,13 @@ static void rec_engine_task(void *handle)
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
 	audio_pipeline_run(pipeline);
 	vad_handle_t vad_inst = vad_create(VAD_MODE_3, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
-/*
+
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
 		ESP_LOGE(TAG,"wakeup or vad engine create failed");
 		xSemaphoreGive( xSemaphore_MegaBoard_init );
 		goto exit;
 	}
-		*/
+		
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
@@ -253,7 +253,7 @@ static void rec_engine_task(void *handle)
 			}
 		}
 	}
-//exit:
+exit:
     ESP_LOGI(TAG, "[ 5 ] Destroy VAD");
     vad_destroy(vad_inst);
 	ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline");	
@@ -357,9 +357,6 @@ int joshvm_esp32_wakeup_enable(void(*callback)(int))
 	}
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_enable");
 	wakeup_obj_created_status = OBJ_CREATED;
-	joshvm_mep32_board_init();
-
-	
 	rec_engine.wakeup_callback = callback;
 	return joshvm_rec_engine_create(&rec_engine,WAKEUP_ENABLE);
 }

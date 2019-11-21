@@ -108,7 +108,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 {
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("--->>>MEGA_ESP32 Version Alpha_v1.40>>>---\r\n");		
+		printf("--->>>MEGA_ESP32 Version Alpha_v1.41>>>---\r\n");		
 	}
 
 	int ret = JOSHVM_OK;
@@ -328,7 +328,8 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				handle->joshvm_media_u.joshvm_media_mediaplayer.callback = callback;
 				if(joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url) != ESP_OK){
 					return JOSHVM_FAIL;
-				}									
+				}	
+				ESP_LOGW(TAG,"player,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 				break;
 			case MEDIA_RECORDER:
 				if(audio_pipeline_run(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline) != ESP_OK){
