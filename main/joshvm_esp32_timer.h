@@ -5,6 +5,6 @@
 
 
 
-void joshvm_vad_timer(void);
+joshvm_err_t joshvm_vad_timer(void);
 
 #endif
