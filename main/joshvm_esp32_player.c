@@ -173,6 +173,7 @@ void joshvm_audio_player_destroy()
 joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
     setup_player(handle);
+	vTaskDelay(500 / portTICK_PERIOD_MS);
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
 		return JOSHVM_FAIL;
 	}
