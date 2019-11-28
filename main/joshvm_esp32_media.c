@@ -11,13 +11,14 @@
 #include "joshvm.h"
 #include "esp_log.h"
 #include "string.h"
+#include "board.h"
 
 //---define
 #define TAG  "JOSHVM_ESP32_MEDIA"
 //5*48*2*1000    48K*2CHA*16/8*2.5S = 16K*1CHA*16/8*15S 
-#define A_RECORD_RB_SIZE 48*10000
-#define A_TRACK_RB_SIZE 48*10000
-#define A_VAD_RB_SIZE 48*10000	//16K*1CHA*16/8*15S 
+#define A_RECORD_RB_SIZE (48*10000)
+#define A_TRACK_RB_SIZE (48*10000)
+#define A_VAD_RB_SIZE (48*10000)	//16K*1CHA*16/8*15S 
 //---variable
 static int8_t audio_status = 0;
 static struct{
@@ -57,7 +58,6 @@ static uint8_t run_one_time = 0;
 audio_board_handle_t MegaBoard_handle = NULL;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 
-
 void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_callback");
@@ -66,41 +66,49 @@ void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 	handle->joshvm_media_u.joshvm_media_mediaplayer.callback(handle,errcode);
 }
 
-joshvm_err_t joshvm_mep32_board_init(void)
+joshvm_err_t joshvm_mep32_board_init()
 {
-	if(xSemaphore_MegaBoard_init == NULL){
-		ESP_LOGE(TAG,"Init Board failed,xSemaphore_MegaBoard_init is NULL");
-		return JOSHVM_FAIL;
-	}	
+	if(xSemaphoreTake( xSemaphore_MegaBoard_init, ( TickType_t ) 0 ) == pdTRUE){		
+		ESP_LOGI(TAG,"Init I2s");
+		if(joshvm_esp32_i2s_create() == JOSHVM_FAIL){
+			return JOSHVM_FAIL;
+		}
+		ESP_LOGI(TAG,"Init Board");
+		MegaBoard_handle = audio_board_init();
+		if((MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
+			goto err;			
+		}
+	
+		int ret = audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
+		if(ret != ESP_OK){
+			goto err;
+		}
 
-	if(xSemaphoreTake( xSemaphore_MegaBoard_init, ( TickType_t ) 0 ) != pdTRUE){
-		ESP_LOGI(TAG,"Board has been init");
 		return JOSHVM_OK;
-	}
-
-	ESP_LOGI(TAG,"Init Board!");
-	MegaBoard_handle = audio_board_init();
-	if((MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
-		ESP_LOGE(TAG,"init board failed!");
-		if(MegaBoard_handle->audio_hal != NULL){
-			audio_hal_deinit(MegaBoard_handle->audio_hal);
-		}
-		if(MegaBoard_handle->adc_hal != NULL){
-			audio_hal_deinit(MegaBoard_handle->adc_hal);
-		}
-	
-		xSemaphoreGive( xSemaphore_MegaBoard_init );
+		err:
+			ESP_LOGE(TAG,"Init Board Failed!");
+			xSemaphoreGive( xSemaphore_MegaBoard_init );
+			joshvm_esp32_i2s_deinit();
+			if(MegaBoard_handle->audio_hal != NULL){
+				audio_hal_deinit(MegaBoard_handle->audio_hal);	
+				MegaBoard_handle->audio_hal = NULL;
+			}
+			if(MegaBoard_handle->adc_hal != NULL){
+				audio_hal_deinit(MegaBoard_handle->adc_hal);
+				MegaBoard_handle->adc_hal = NULL;
+			}
+			if(MegaBoard_handle != NULL){
+				audio_free(MegaBoard_handle);
+				MegaBoard_handle = NULL;
+			}		
 		return JOSHVM_FAIL;
+	}else{
+		if((MegaBoard_handle == NULL) || (MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
+			vTaskDelay(2000 / portTICK_PERIOD_MS);//waitting for another task create i2s and init baord,when two task call this fun at the sametime
+			if((MegaBoard_handle == NULL) || (MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL))return JOSHVM_FAIL;
+		}
+		ESP_LOGI(TAG,"Audio_Board had already Init");
 	}
-	
-	int ret = audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
-	if(ret != ESP_OK){
-		audio_hal_deinit(MegaBoard_handle->audio_hal);	
-		audio_hal_deinit(MegaBoard_handle->adc_hal);
-		xSemaphoreGive( xSemaphore_MegaBoard_init );
-		return JOSHVM_FAIL;
-	}
-	audio_hal_set_volume(MegaBoard_handle->audio_hal,61);
 	return JOSHVM_OK;
 }
 
@@ -108,7 +116,11 @@ int joshvm_esp32_media_create(int type, void** handle)
 {
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("--->>>MEGA_ESP32 Version Alpha_v1.43>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.44>>>---\r\n");		
+	}
+
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		return JOSHVM_FAIL;
 	}
 
 	int ret = JOSHVM_OK;
@@ -282,9 +294,20 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 		&& (a_vad_obj_created_status == OBJ_CREATED_NOT)\
 		&& (wakeup_obj_created_status == OBJ_CREATED_NOT)){
 		audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_STOP);
-		audio_hal_deinit(MegaBoard_handle->audio_hal);	
-		audio_hal_deinit(MegaBoard_handle->adc_hal);	
+		if(MegaBoard_handle->audio_hal != NULL){
+			audio_hal_deinit(MegaBoard_handle->audio_hal);	
+			MegaBoard_handle->audio_hal = NULL;
+		}
+		if(MegaBoard_handle->adc_hal != NULL){
+			audio_hal_deinit(MegaBoard_handle->adc_hal);
+			MegaBoard_handle->adc_hal = NULL;
+		}
+		if(MegaBoard_handle != NULL){
+			audio_free(MegaBoard_handle);
+			MegaBoard_handle = NULL;
+		}		
 		xSemaphoreGive( xSemaphore_MegaBoard_init );
+		joshvm_esp32_i2s_deinit();
 	}
 	return JOSHVM_OK;
 }

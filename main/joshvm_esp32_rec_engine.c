@@ -92,8 +92,10 @@ static int8_t task_run =1;
 static QueueHandle_t vad_que = NULL;
 extern joshvm_media_t *joshvm_media_vad;
 extern uint8_t wakeup_obj_created_status;
-uint32_t vad_off_time = 0;
+extern audio_element_handle_t josh_i2s_stream_reader;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
+
+uint32_t vad_off_time = 0;
 //---fun
 esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type);
 
@@ -118,12 +120,12 @@ static void rec_engine_task(void *handle)
 	}
 
 	audio_pipeline_handle_t pipeline;
-	audio_element_handle_t i2s_stream_reader, filter, raw_read;
+	audio_element_handle_t filter, raw_read;
 
 	audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
 	pipeline = audio_pipeline_init(&pipeline_cfg);
 	mem_assert(pipeline);
-
+/*
 	i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
 	i2s_cfg.i2s_config.sample_rate = 48000;
 	i2s_cfg.type = AUDIO_STREAM_READER;
@@ -131,8 +133,8 @@ static void rec_engine_task(void *handle)
 	i2s_cfg.i2s_port = 1;
 #endif
 	i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
-	i2s_stream_reader = i2s_stream_init(&i2s_cfg);
-
+	josh_i2s_stream_reader = i2s_stream_init(&i2s_cfg);
+*/
 	rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
 	rsp_cfg.src_rate = 48000;
 	rsp_cfg.src_ch = 2;
@@ -147,18 +149,12 @@ static void rec_engine_task(void *handle)
 	};
 	raw_read = raw_stream_init(&raw_cfg);	
 
-	audio_pipeline_register(pipeline, i2s_stream_reader, "i2s_rec_engine");
+	audio_pipeline_register(pipeline, josh_i2s_stream_reader, "i2s_rec_engine");
 	audio_pipeline_register(pipeline, filter, "filter_rec_engine");
 	audio_pipeline_register(pipeline, raw_read, "raw_rec_engine");
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
 	audio_pipeline_run(pipeline);
 	vad_handle_t vad_inst = vad_create(VAD_MODE_3, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
-
-	if(joshvm_mep32_board_init() != JOSHVM_OK){
-		ESP_LOGE(TAG,"wakeup or vad engine create failed");
-		xSemaphoreGive( xSemaphore_MegaBoard_init );
-		goto exit;
-	}
 		
 	task_run = 1;
 	while (task_run) {
@@ -253,20 +249,19 @@ static void rec_engine_task(void *handle)
 			}
 		}
 	}
-exit:
     ESP_LOGI(TAG, "[ 5 ] Destroy VAD");
     vad_destroy(vad_inst);
 	ESP_LOGI(TAG, "[ 6 ] Stop audio_pipeline");	
 	audio_pipeline_terminate(pipeline);	
 	/* Terminate the pipeline before removing the listener */
 	audio_pipeline_unregister(pipeline, raw_read);
-	audio_pipeline_unregister(pipeline, i2s_stream_reader);
+	audio_pipeline_unregister(pipeline, josh_i2s_stream_reader);
 	audio_pipeline_unregister(pipeline, filter);	
 
 	/* Release all resources */
 	audio_pipeline_deinit(pipeline);
 	audio_element_deinit(raw_read);
-	audio_element_deinit(i2s_stream_reader);
+	//audio_element_deinit(i2s_stream_reader);
 	audio_element_deinit(filter);
 
 	model->destroy(iface);
@@ -355,6 +350,11 @@ int joshvm_esp32_wakeup_enable(void(*callback)(int))
 		ESP_LOGW(TAG,"wakeup has already enable");
 		return JOSHVM_INVALID_STATE;
 	}
+
+	if(joshvm_mep32_board_init() != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}
+	
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_enable");
 	wakeup_obj_created_status = OBJ_CREATED;
 	rec_engine.wakeup_callback = callback;

@@ -29,6 +29,34 @@ enum{
 
 
 //---fun
+/**
+ * @brief init i2s_reader&i2s_writer ,cfg by default
+ *
+ * @note 
+ * @param 	
+ *			
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
+joshvm_err_t joshvm_esp32_i2s_create(void);
+
+/**
+ * @brief deinit i2s_reader&i2s_writer ,cfg by default
+ *
+ * @note 
+ * @param 	
+ *			
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
+joshvm_err_t joshvm_esp32_i2s_deinit(void);
+	
 
 /**
  * @brief init meida recorder ,cfg by default

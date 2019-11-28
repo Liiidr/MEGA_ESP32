@@ -54,6 +54,7 @@ static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
+extern audio_element_handle_t josh_i2s_stream_writer;
 //---struct
 typedef struct{
 	QueueHandle_t que;
@@ -131,12 +132,8 @@ static void setup_player(joshvm_media_t* handle)
     http_cfg.enable_playlist_parser = true;
     esp_audio_input_stream_add(player, http_stream_init(&http_cfg));
 
-    // Create writers and add to esp_audio
-    i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
-    i2s_writer.i2s_config.sample_rate = 48000;
-    i2s_writer.type = AUDIO_STREAM_WRITER;
-	i2s_writer.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
-    esp_audio_output_stream_add(player, i2s_stream_init(&i2s_writer));
+    //add to esp_audio
+	esp_audio_output_stream_add(player,josh_i2s_stream_writer);
 
     // Add decoders and encoders to esp_audio
     wav_decoder_cfg_t wav_dec_cfg = DEFAULT_WAV_DECODER_CONFIG();
@@ -173,10 +170,6 @@ void joshvm_audio_player_destroy()
 joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 {
     setup_player(handle);
-	vTaskDelay(500 / portTICK_PERIOD_MS);
-	if(joshvm_mep32_board_init() != JOSHVM_OK){
-		return JOSHVM_FAIL;
-	}
 	return JOSHVM_OK;
 }
 
@@ -194,7 +187,6 @@ audio_err_t joshvm_audio_pause(void)
 	ESP_LOGI(TAG, "Pause audio play");
 	esp_audio_pos_get(player, &audio_pos);
 	if((ret = esp_audio_pause(player)) == ESP_OK){
-    //if((ret = esp_audio_stop(player, TERMINATION_TYPE_NOW)) == ESP_OK){
 		return ret;
 	}
 	return ret = ESP_FAIL;
@@ -205,7 +197,6 @@ audio_err_t joshvm_audio_resume_handler(const char *url)
 	int ret;
     ESP_LOGI(TAG,"Resume pos :%d",audio_pos);
 	if((ret = esp_audio_resume(player)) == ESP_OK){
-    //esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, audio_pos);	
     	return ret;
 	}
 	return ESP_FAIL;

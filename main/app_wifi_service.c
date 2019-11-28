@@ -174,7 +174,7 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
 {
     ESP_LOGD(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
              evt->type, evt->source, evt->data, evt->len, ctx);
-	ESP_LOGE(TAG,"state = %d",wifi_service_state_get(wifi_serv));
+	ESP_LOGI(TAG,"state = %d",wifi_service_state_get(wifi_serv));
 			 
 	if(evt->type == WIFI_SERV_EVENT_CONNECTING){
         ESP_LOGI(TAG, "PERIPH_WIFI_CONNECTING [%d]", __LINE__);
@@ -277,7 +277,6 @@ void app_wifi_service(void)
 joshvm_err_t joshvm_esp32_wifi_set(char* ssid, char* password, int force)
 {
 	int ret = JOSHVM_FAIL;
-	ESP_LOGE(TAG,"force = %d",force);
 	if((strlen(ssid) == 0)  || (strlen(password)) == 0){
 		ESP_LOGE(TAG,"Property file's ssid or passwd is null!");
 		return JOSHVM_FAIL;
