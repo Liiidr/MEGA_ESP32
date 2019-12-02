@@ -214,7 +214,7 @@ static void wifi_task(void *pvParameters)
     memset(&serv->info, 0x00, sizeof(wifi_config_t));
     if (ESP_OK == esp_wifi_get_config(WIFI_IF_STA, &serv->info)) {
         if (serv->info.sta.ssid[0] != 0) {
-            printf("Connect to stored Wi-Fi SSID:%s PWD:%s", serv->info.sta.ssid,serv->info.sta.password);//mod by li 20191101
+            printf("Connect to stored Wi-Fi SSID:%s PWD:%s\n", serv->info.sta.ssid,serv->info.sta.password);//mod by li 20191101
         }else{
 			ESP_LOGW(TAG, "No wifi SSID stored!");
 			//mod by li begin 20191017
@@ -250,7 +250,7 @@ static void wifi_task(void *pvParameters)
                 cb_evt.source = serv_handle;
                 cb_evt.data = wifi_msg.pdata;
                 cb_evt.len = wifi_msg.len;
-                ESP_LOGW(TAG, "STATE type:%d, pdata:%p, len:%d", wifi_msg.type, wifi_msg.pdata, wifi_msg.len);
+                ESP_LOGD(TAG, "STATE type:%d, pdata:%p, len:%d", wifi_msg.type, wifi_msg.pdata, wifi_msg.len);
                 if (wifi_msg.type == WIFI_SERV_EVENT_SETTING_TIMEOUT) {
                     ESP_LOGI(TAG, "WIFI_SERV_EVENT_SETTING_TIMEOUT");
                     STAILQ_FOREACH(item, &serv->setting_list, next) {

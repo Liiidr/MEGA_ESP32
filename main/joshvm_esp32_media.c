@@ -57,6 +57,9 @@ static ring_buffer_t audio_vad_rb;
 static uint8_t run_one_time = 0;
 audio_board_handle_t MegaBoard_handle = NULL;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
+extern SemaphoreHandle_t s_mutex_recorder;
+extern SemaphoreHandle_t s_mutex_player;
+
 
 void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
@@ -116,7 +119,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 {
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.44>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.45>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -128,9 +131,13 @@ int joshvm_esp32_media_create(int type, void** handle)
 	if(type != AUDIO_VAD_REC){	
 		switch(type){
 			case MEDIA_PLAYER: 
+				if(xSemaphoreTake( s_mutex_player, ( TickType_t ) 0 ) != pdTRUE){
+					ESP_LOGE(TAG,"player(such as meidaPlyaer/audioTrack) obj can only run one");
+					return JOSHVM_FAIL;
+				}
+		
 				if(m_player_obj_created_status != OBJ_CREATED){
-					m_player_obj_created_status = OBJ_CREATED;
-					
+					m_player_obj_created_status = OBJ_CREATED;					
 					joshvm_media_a = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media_a->media_type = type;
 					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));					
@@ -146,9 +153,13 @@ int joshvm_esp32_media_create(int type, void** handle)
 				}
 				break;
 			case MEDIA_RECORDER: 	
+				if(xSemaphoreTake( s_mutex_recorder, ( TickType_t ) 0 ) != pdTRUE){
+					ESP_LOGE(TAG,"recorder(such as meidaRecorder/audioRecorder/wakeup&vad) obj can only run one");
+					return JOSHVM_FAIL;
+				}
+			
 				if(m_rec_obj_created_status != OBJ_CREATED){
-					m_rec_obj_created_status = OBJ_CREATED;
-					
+					m_rec_obj_created_status = OBJ_CREATED;					
 					joshvm_media_a = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media_a->media_type = type;
 					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
@@ -171,9 +182,13 @@ int joshvm_esp32_media_create(int type, void** handle)
 				}
 				break;
 			case AUDIO_TRACK:
+				if(xSemaphoreTake( s_mutex_player, ( TickType_t ) 0 ) != pdTRUE){
+					ESP_LOGE(TAG,"player(such as meidaPlyaer/audioTrack) obj can only run one");
+					return JOSHVM_FAIL;
+				}
+				
 				if(a_track_obj_created_status != OBJ_CREATED){
-					a_track_obj_created_status = OBJ_CREATED;
-					
+					a_track_obj_created_status = OBJ_CREATED;					
 					joshvm_media_a = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media_a->media_type = type;
 					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
@@ -193,9 +208,13 @@ int joshvm_esp32_media_create(int type, void** handle)
 				}
 				break;
 			case AUDIO_RECORDER:	
+				if(xSemaphoreTake( s_mutex_recorder, ( TickType_t ) 0 ) != pdTRUE){
+					ESP_LOGE(TAG,"recorder(such as meidaRecorder/audioRecorder/wakeup&vad) obj can only run one");
+					return JOSHVM_FAIL;
+				}
+				
 				if(a_rec_obj_created_status != OBJ_CREATED){
-					a_rec_obj_created_status = OBJ_CREATED;
-					
+					a_rec_obj_created_status = OBJ_CREATED;					
 					joshvm_media_a = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media_a->media_type = type;
 					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
@@ -218,7 +237,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 				break;
 		}			
 		return ret;
-	}else if(type == AUDIO_VAD_REC){
+	}else if(type == AUDIO_VAD_REC){		
 		if(a_vad_obj_created_status != OBJ_CREATED){			
 			a_vad_obj_created_status = OBJ_CREATED;
 			joshvm_media_vad = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
@@ -257,26 +276,30 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 		case MEDIA_PLAYER:
 			m_player_obj_created_status = OBJ_CREATED_NOT;
 			joshvm_audio_player_destroy();	
+			xSemaphoreGive(s_mutex_player);
 
 			ESP_LOGI(TAG,"MediaPlayer closed!");			
 			break;
 		case MEDIA_RECORDER:
 			m_rec_obj_created_status = OBJ_CREATED_NOT;
 			joshvm_media_recorder_release(handle);
-
+			xSemaphoreGive(s_mutex_recorder);
 			ESP_LOGI(TAG,"MediaRecorder closed!");
 			break;
 		case AUDIO_TRACK:
 			a_track_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audiotrack.track_rb);			
+			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audiotrack.track_rb);	
+			xSemaphoreGive(s_mutex_player);
 			break;
 		case AUDIO_RECORDER:
 			a_rec_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb);			
+			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb);
+			xSemaphoreGive(s_mutex_recorder);
 			break;
 		case AUDIO_VAD_REC:			
 			a_vad_obj_created_status = OBJ_CREATED_NOT;
 			ring_buffer_deinit(handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb);
+			
 			break;
 		default:
 			break;
@@ -587,8 +610,8 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 			handle->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback = callback;
 			ret = joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audio_vad_rec.status,\
 											 handle->joshvm_media_u.joshvm_media_audio_vad_rec.rec_rb,buffer,size,bytesRead);
-			
 			if(ret == JOSHVM_NOTIFY_LATER){
+				printf("ret == JOSHVM_NOTIFY_LATER\n");
 				handle->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NEED_CB;
 			}
 			break;			

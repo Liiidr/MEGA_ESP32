@@ -49,6 +49,9 @@ static const char *TAG              = "JOSHVM_Audio";
 UBaseType_t pvCreatedTask_vadtask;
 extern esp_audio_handle_t           player;
 SemaphoreHandle_t xSemaphore_MegaBoard_init = NULL;
+SemaphoreHandle_t s_mutex_recorder = NULL;
+SemaphoreHandle_t s_mutex_player = NULL;
+
 
 //---define
 //---fun
@@ -71,10 +74,12 @@ int esp32_read_voice_buffer(unsigned char* buffer,	int length)
 
 void joshvm_app_init(void)
 {
-    esp_log_level_set("*", ESP_LOG_INFO);
+    //esp_log_level_set("*", ESP_LOG_INFO);
     ESP_LOGI(TAG, "ADF version is %s", ADF_VER);
 
 	xSemaphore_MegaBoard_init = xSemaphoreCreateMutex(); 
+	s_mutex_recorder = xSemaphoreCreateMutex();  
+	s_mutex_player = xSemaphoreCreateMutex(); 
     //audio_board_sdcard_init(set);
     
     app_sdcard_init();

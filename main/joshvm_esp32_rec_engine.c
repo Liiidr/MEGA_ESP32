@@ -94,6 +94,7 @@ extern joshvm_media_t *joshvm_media_vad;
 extern uint8_t wakeup_obj_created_status;
 extern audio_element_handle_t josh_i2s_stream_reader;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
+extern SemaphoreHandle_t s_mutex_recorder;
 
 uint32_t vad_off_time = 0;
 //---fun
@@ -190,6 +191,7 @@ static void rec_engine_task(void *handle)
 				if((written_size) && (NEED_CB == joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag)){
 					joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
 					joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback(joshvm_media_vad,JOSHVM_OK);
+					printf("ret == Vad rb_callback\n");
 				}
 			}
 		}
@@ -303,8 +305,12 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 	if((wakeup_state == WAKEUP_ENABLE) || (vad_state == VAD_START)){
 		ESP_LOGI(TAG,"rec_engine have created!");
 		return JOSHVM_OK;
-	}	
+	}
 	
+	if(xSemaphoreTake( s_mutex_recorder, ( TickType_t ) 0 ) != pdTRUE){
+		ESP_LOGE(TAG,"recorder(such as meidaRecorder/audioRecorder/wakeup&vad) obj can only run one");
+		return JOSHVM_FAIL;
+	}
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
 	return 0;
 }
@@ -324,6 +330,7 @@ esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type)
 	}
 
 	if((rec_engine->wakeup_state == WAKEUP_DISABLE) && (rec_engine->vad_state == VAD_STOP)){
+		xSemaphoreGive(s_mutex_recorder);
 		task_run = 0;
 	}
 	return 0;

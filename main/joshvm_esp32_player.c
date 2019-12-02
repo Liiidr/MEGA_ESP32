@@ -176,8 +176,17 @@ joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 int joshvm_audio_play_handler(const char *url)
 {
 	int ret;
-    ESP_LOGI(TAG, "Playing : %s", url);
+	esp_audio_state_t state;
+	do{
+		esp_audio_state_get(player,&state);		
+		if(state.status == AUDIO_STATUS_RUNNING){
+			ESP_LOGW(TAG,"state :%d\n",state.status);
+			vTaskDelay(500 /portTICK_PERIOD_MS);
+		}
+	}while(state.status == AUDIO_STATUS_RUNNING);
+	ESP_LOGI(TAG, "Playing : %s", url);
     ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
+	vTaskDelay(1000 /portTICK_PERIOD_MS);//notify voice can't play entirely 
 	return ret;
 }
 
