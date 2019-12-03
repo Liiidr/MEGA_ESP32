@@ -25,7 +25,7 @@
 #ifdef CONFIG_ESP_LYRATD_MINI_V1_1_BOARD
 #define CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 #endif
-//---creater cfg
+//---creater cfg 
 #define RECORD_RATE         48000
 #define RECORD_CHANNEL      2
 #define RECORD_BITS         16

@@ -53,8 +53,11 @@ esp_audio_handle_t player;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
+static char *josh_playurl = NULL;
 extern audio_board_handle_t MegaBoard_handle;
 extern audio_element_handle_t josh_i2s_stream_writer;
+extern SemaphoreHandle_t josh_mutex_playurl;
+
 //---struct
 typedef struct{
 	QueueHandle_t que;
@@ -63,6 +66,7 @@ typedef struct{
 esp_audio_state_task_t esp_audio_state_task_param = {NULL,NULL};
 
 extern void javanotify_simplespeech_event(int, int);
+int joshvm_audio_play_handler(const char *url);
 
 static void esp_audio_state_task (void *para)
 {
@@ -82,6 +86,10 @@ static void esp_audio_state_task (void *para)
 				errcode = JOSHVM_OK;	
 			}
 			joshvm_esp32_media_callback(handle,errcode);
+			printf("%p---------\n",josh_mutex_playurl);
+			if(xSemaphoreTake(josh_mutex_playurl,( TickType_t )  0) == pdTRUE){
+				joshvm_audio_play_handler(josh_playurl);
+			}
         } 			
     }
 }
@@ -115,7 +123,7 @@ static void setup_player(joshvm_media_t* handle)
 
 	esp_audio_state_task_param.que = cfg.evt_que;
 	esp_audio_state_task_param.handle = handle; 
-	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 2 * 1024, (void*)&esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
+	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 3 * 1024, (void*)&esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
 
     // Create readers and add to esp_audio
     fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
@@ -175,8 +183,18 @@ joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 
 int joshvm_audio_play_handler(const char *url)
 {
-	int ret;
+	int ret = JOSHVM_FAIL;
 	esp_audio_state_t state;
+	esp_audio_state_get(player,&state);
+	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
+		xSemaphoreGive(josh_mutex_playurl);
+		josh_playurl = url;
+		ret = JOSHVM_OK;
+	}else{
+		ESP_LOGI(TAG, "Playing : %s", url);
+		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
+	}	
+	/*
 	do{
 		esp_audio_state_get(player,&state);		
 		if(state.status == AUDIO_STATUS_RUNNING){
@@ -187,6 +205,7 @@ int joshvm_audio_play_handler(const char *url)
 	ESP_LOGI(TAG, "Playing : %s", url);
     ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
 	vTaskDelay(1000 /portTICK_PERIOD_MS);//notify voice can't play entirely 
+	*/
 	return ret;
 }
 
