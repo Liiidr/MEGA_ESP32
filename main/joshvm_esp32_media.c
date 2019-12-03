@@ -59,8 +59,7 @@ audio_board_handle_t MegaBoard_handle = NULL;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 extern SemaphoreHandle_t s_mutex_recorder;
 extern SemaphoreHandle_t s_mutex_player;
-SemaphoreHandle_t josh_mutex_playurl = NULL;
-
+extern EventGroupHandle_t j_EventGroup_player;
 
 void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
@@ -119,9 +118,10 @@ joshvm_err_t joshvm_mep32_board_init()
 
 int joshvm_esp32_media_create(int type, void** handle)
 {
+	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4503>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4504>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -143,8 +143,10 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media_a = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media_a->media_type = type;
 					joshvm_media_a->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
-					josh_mutex_playurl = xSemaphoreCreateMutex();
-					xSemaphoreTake(josh_mutex_playurl,( TickType_t ) 0);
+					if((j_EventGroup_player = xEventGroupCreate()) == NULL){
+						ESP_LOGE(TAG,"j_EventGroup_player create failed!");
+						return JOSHVM_FAIL;
+					} 
 					if(joshvm_audio_wrapper_init(joshvm_media_a) != JOSHVM_OK){
 						joshvm_esp32_media_close(joshvm_media_a);						
 						return JOSHVM_FAIL;
@@ -281,9 +283,9 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			m_player_obj_created_status = OBJ_CREATED_NOT;
 			joshvm_audio_player_destroy();	
 			xSemaphoreGive(s_mutex_player);
-			if(NULL != josh_mutex_playurl){
-				vSemaphoreDelete(josh_mutex_playurl);
-				josh_mutex_playurl = NULL;
+			if(j_EventGroup_player != NULL){
+				vEventGroupDelete(j_EventGroup_player);
+				j_EventGroup_player = NULL;
 			}
 			ESP_LOGI(TAG,"MediaPlayer closed!");			
 			break;

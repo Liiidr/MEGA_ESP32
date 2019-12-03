@@ -48,15 +48,18 @@
 #include "filter_resample.h"
 #include "joshvm_esp32_player.h"
 #include "joshvm.h"
+
+//---define
+#define J_STOP_BIT_0    (1 << 0)
+
 //---variable
 esp_audio_handle_t player;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
-static char *josh_playurl = NULL;
+EventGroupHandle_t j_EventGroup_player = NULL; 
 extern audio_board_handle_t MegaBoard_handle;
 extern audio_element_handle_t josh_i2s_stream_writer;
-extern SemaphoreHandle_t josh_mutex_playurl;
 
 //---struct
 typedef struct{
@@ -70,6 +73,7 @@ int joshvm_audio_play_handler(const char *url);
 
 static void esp_audio_state_task (void *para)
 {
+	EventBits_t uxBits;
     QueueHandle_t que = ((esp_audio_state_task_t *) para)->que;
 	joshvm_media_t *handle = ((esp_audio_state_task_t *) para)->handle;
     esp_audio_state_t esp_state = {0};
@@ -86,9 +90,11 @@ static void esp_audio_state_task (void *para)
 				errcode = JOSHVM_OK;	
 			}
 			joshvm_esp32_media_callback(handle,errcode);
-			printf("%p---------\n",josh_mutex_playurl);
-			if(xSemaphoreTake(josh_mutex_playurl,( TickType_t )  0) == pdTRUE){
-				joshvm_audio_play_handler(josh_playurl);
+			uxBits = xEventGroupSetBits(j_EventGroup_player, J_STOP_BIT_0);
+			if((uxBits & J_STOP_BIT_0) != 0){
+				printf("Set stop bits when J_STOP_BIT_0 still set\n");
+			}else{
+				printf("Set stop bits when bits was clear\n");
 			}
         } 			
     }
@@ -187,9 +193,8 @@ int joshvm_audio_play_handler(const char *url)
 	esp_audio_state_t state;
 	esp_audio_state_get(player,&state);
 	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
-		xSemaphoreGive(josh_mutex_playurl);
-		josh_playurl = url;
-		ret = JOSHVM_OK;
+		ESP_LOGW(TAG,"player is playing,status :%d",state.status);
+		ret = JOSHVM_FAIL;
 	}else{
 		ESP_LOGI(TAG, "Playing : %s", url);
 		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
@@ -199,7 +204,7 @@ int joshvm_audio_play_handler(const char *url)
 		esp_audio_state_get(player,&state);		
 		if(state.status == AUDIO_STATUS_RUNNING){
 			ESP_LOGW(TAG,"state :%d\n",state.status);
-			vTaskDelay(500 /portTICK_PERIOD_MS);
+			vTaskDelay(50 /portTICK_PERIOD_MS);
 		}
 	}while(state.status == AUDIO_STATUS_RUNNING);
 	ESP_LOGI(TAG, "Playing : %s", url);
@@ -234,7 +239,25 @@ audio_err_t joshvm_audio_stop_handler(void)
 {
     ESP_LOGI(TAG, "Stop audio play");
 	int ret;
+	EventBits_t uxBits;
+	//esp_audio_state_t state;
+	//esp_audio_state_get(player,&state);
+
 	ret =  esp_audio_stop(player, TERMINATION_TYPE_NOW);
+
+	uxBits = xEventGroupWaitBits(j_EventGroup_player, 
+                                     J_STOP_BIT_0,            
+                                     pdTRUE,             
+                                     pdTRUE,             
+                                     100/portTICK_PERIOD_MS); 
+    if((uxBits & J_STOP_BIT_0) == J_STOP_BIT_0){       
+        printf("receive J_STOP_BIT_0\r\n");
+    }
+    else{        
+        printf("haven't receive J_STOP_BIT_0\r\n");
+    }
+	
+	
 	return ret;
 }
 
