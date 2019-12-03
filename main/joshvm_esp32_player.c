@@ -57,7 +57,7 @@ esp_audio_handle_t player;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
-EventGroupHandle_t j_EventGroup_player = NULL; 
+//EventGroupHandle_t j_EventGroup_player = NULL; 
 extern audio_board_handle_t MegaBoard_handle;
 extern audio_element_handle_t josh_i2s_stream_writer;
 
@@ -90,7 +90,7 @@ static void esp_audio_state_task (void *para)
 				errcode = JOSHVM_OK;	
 			}
 			joshvm_esp32_media_callback(handle,errcode);
-			uxBits = xEventGroupSetBits(j_EventGroup_player, J_STOP_BIT_0);
+			uxBits = xEventGroupSetBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, J_STOP_BIT_0);
 			if((uxBits & J_STOP_BIT_0) != 0){
 				printf("Set stop bits when J_STOP_BIT_0 still set\n");
 			}else{
@@ -235,7 +235,7 @@ audio_err_t joshvm_audio_resume_handler(const char *url)
 	return ESP_FAIL;
 }
 
-audio_err_t joshvm_audio_stop_handler(void)
+audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle)
 {
     ESP_LOGI(TAG, "Stop audio play");
 	int ret;
@@ -245,7 +245,7 @@ audio_err_t joshvm_audio_stop_handler(void)
 
 	ret =  esp_audio_stop(player, TERMINATION_TYPE_NOW);
 
-	uxBits = xEventGroupWaitBits(j_EventGroup_player, 
+	uxBits = xEventGroupWaitBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, 
                                      J_STOP_BIT_0,            
                                      pdTRUE,             
                                      pdTRUE,             

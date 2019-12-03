@@ -215,7 +215,6 @@ static void rec_engine_task(void *handle)
 				if((written_size) && (NEED_CB == joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag)){
 					joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback_flag = NO_NEED_CB;
 					joshvm_media_vad->joshvm_media_u.joshvm_media_audio_vad_rec.rb_callback(joshvm_media_vad,JOSHVM_OK);
-					printf("ret == Vad rb_callback\n");
 				}
 			}
 		}

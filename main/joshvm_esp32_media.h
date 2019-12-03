@@ -2,6 +2,7 @@
 #define _JOSHVM_ESP32_MEDIA_H_
 
 #include "joshvm_esp32_ring_buff.h"
+#include "freertos/event_groups.h"
 
 //---define
 #define QUE_TRACK_START 1
@@ -52,6 +53,7 @@ typedef struct{
 	uint8_t	bit_rate;
 	int positon;
 	int duration;	
+	EventGroupHandle_t evt_group_stop;//for player stop
 }joshvm_media_mediaplayer_t;
 
 typedef struct{
