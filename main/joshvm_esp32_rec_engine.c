@@ -188,8 +188,8 @@ static void rec_engine_task(void *handle)
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize);
 		if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){
 			vad_state = vad_process(vad_inst, buff);
-			
-			//clear timer,vad_off_time increase 1 per 200ms
+
+ 			//clear timer,vad_off_time increase 1 per 200ms
 			if(vad_state == VAD_SPEECH){				
 				vad_off_time = 0;
 			}			

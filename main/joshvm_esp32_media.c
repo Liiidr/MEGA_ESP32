@@ -121,7 +121,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4504>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.46>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -144,13 +144,9 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->media_type = type;
 					joshvm_media->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 					if((joshvm_media->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop = xEventGroupCreate()) == NULL){
-						ESP_LOGE(TAG,"player evt_group_stop create failed!");
+						ESP_LOGE(TAG,"player evt_group_stop create failed!");						
 						return JOSHVM_FAIL;
 					} 
-					if(joshvm_audio_wrapper_init(joshvm_media) != JOSHVM_OK){
-						joshvm_esp32_media_close(joshvm_media);						
-						return JOSHVM_FAIL;
-					}		
 					*handle = joshvm_media;			
 					ret = JOSHVM_OK;
 				}else{
@@ -280,8 +276,7 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 	switch(handle->media_type)
 	{
 		case MEDIA_PLAYER:
-			m_player_obj_created_status = OBJ_CREATED_NOT;
-			joshvm_audio_player_destroy();	
+			m_player_obj_created_status = OBJ_CREATED_NOT;	
 			xSemaphoreGive(s_mutex_player);
 			if(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop != NULL){
 				vEventGroupDelete(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop);
@@ -376,10 +371,15 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 	}
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
-	int ret = JOSHVM_FAIL;
+	int ret = JOSHVM_OK;
 	if(audio_status != JOSHVM_MEDIA_PAUSED){//start		
 		switch(handle->media_type){
-			case MEDIA_PLAYER:			
+			case MEDIA_PLAYER:	
+				if(joshvm_audio_wrapper_init(handle) != JOSHVM_OK){
+					ESP_LOGE(TAG,"media_player failed");
+					joshvm_esp32_media_stop(handle);						
+					return JOSHVM_FAIL;
+				}				
 				handle->joshvm_media_u.joshvm_media_mediaplayer.callback = callback;
 				if(joshvm_audio_play_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url) != ESP_OK){
 					return JOSHVM_FAIL;
@@ -486,11 +486,14 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			if((ret = joshvm_audio_stop_handler(handle)) != ESP_OK){
 				return JOSHVM_FAIL;
 			}	
+			joshvm_audio_player_destroy();				
+			
 			ret = JOSHVM_OK;
 			ESP_LOGI(TAG,"MediaPlayer stop!");
 			break;
 		case MEDIA_RECORDER:
-			ret = audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline);	
+			if(audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
+			//joshvm_media_recorder_release(handle);
 			ESP_LOGI(TAG,"MediaRecorder stop!");
 			break;
 		case AUDIO_TRACK:	
@@ -556,15 +559,15 @@ int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 		case MEDIA_PLAYER:
 			ret = joshvm_audio_get_state();
 			switch(ret){
-				case 1:
+				case AUDIO_STATUS_RUNNING:
 					*state = JOSHVM_MEDIA_PLAYING;//
 					ret = JOSHVM_OK;
 					break;
-				case 2:
+				case AUDIO_STATUS_PAUSED:
 					*state = JOSHVM_MEDIA_PAUSED;
 					ret = JOSHVM_OK;
 					break;
-				case 3:
+				case AUDIO_STATUS_STOPPED:
 					*state = JOSHVM_MEDIA_STOPPED;
 					ret = JOSHVM_OK;
 					break;

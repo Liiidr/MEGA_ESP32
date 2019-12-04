@@ -56,7 +56,7 @@
 #define TRACK_CHENK_TIMEOUT 800
 //---variable
 uint16_t track_check_time_cnt = 0;
-audio_element_handle_t josh_i2s_stream_reader,josh_i2s_stream_writer;
+audio_element_handle_t josh_i2s_stream_reader = NULL,josh_i2s_stream_writer = NULL;
 
 typedef struct rsp_filter {
     resample_info_t *resample_info;
@@ -110,11 +110,11 @@ static audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int 
 	#ifdef CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
 		//printf("CONFIG_ESP_LYRAT_MINI_V1_1_BOARD\n");
 		if(AUDIO_STREAM_READER == type){
-			i2s_cfg.i2s_port = 1;		
+			i2s_cfg.i2s_port = 1;	
+			i2s_cfg.i2s_config.use_apll = 0;
 		}		
 	#endif
 	i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
-    i2s_cfg.i2s_config.use_apll = 0;
     i2s_cfg.type = type;
 	i2s_cfg.i2s_config.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT;
     audio_element_handle_t i2s_stream = i2s_stream_init(&i2s_cfg);
@@ -218,17 +218,27 @@ static audio_element_handle_t create_fatfs_stream(int sample_rates, int bits, in
 
 joshvm_err_t joshvm_esp32_i2s_create(void)
 {
-	josh_i2s_stream_reader = create_i2s_stream(RECORD_RATE,RECORD_BITS,RECORD_CHANNEL,AUDIO_STREAM_READER);
-	if(josh_i2s_stream_reader == NULL) return JOSHVM_FAIL;
-	josh_i2s_stream_writer = create_i2s_stream(PLAYBACK_RATE,PLAYBACK_BITS,PLAYBACK_CHANNEL,AUDIO_STREAM_WRITER);
-	if(josh_i2s_stream_writer == NULL) return JOSHVM_FAIL;
+	if(josh_i2s_stream_reader == NULL){
+		josh_i2s_stream_reader = create_i2s_stream(RECORD_RATE,RECORD_BITS,RECORD_CHANNEL,AUDIO_STREAM_READER);
+		if(josh_i2s_stream_reader == NULL) return JOSHVM_FAIL;
+	}
+	if(josh_i2s_stream_writer == NULL){
+		josh_i2s_stream_writer = create_i2s_stream(PLAYBACK_RATE,PLAYBACK_BITS,PLAYBACK_CHANNEL,AUDIO_STREAM_WRITER);
+		if(josh_i2s_stream_writer == NULL) return JOSHVM_FAIL;
+	}
 	return JOSHVM_OK;
 }
 
 joshvm_err_t joshvm_esp32_i2s_deinit(void)
 {
-	audio_element_deinit(josh_i2s_stream_reader);
-	audio_element_deinit(josh_i2s_stream_writer);
+	if(josh_i2s_stream_reader != NULL){
+		audio_element_deinit(josh_i2s_stream_reader);
+		josh_i2s_stream_reader = NULL;
+	}
+	if(josh_i2s_stream_writer != NULL){
+		audio_element_deinit(josh_i2s_stream_writer);
+		josh_i2s_stream_writer = NULL;
+	}
 	return JOSHVM_OK;
 }
 

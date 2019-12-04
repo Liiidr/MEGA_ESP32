@@ -96,8 +96,8 @@ void joshvm_app_init(void)
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 
 	while (1) {		
-		//extern void test_esp32_media(void);
-		//test_esp32_media();
+		//extern void fun_test();
+		//fun_test();		
 		//heap_caps_print_heap_info(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );  		
 		//JavaNativeTest();	

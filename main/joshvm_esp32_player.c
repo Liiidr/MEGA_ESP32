@@ -47,6 +47,7 @@
 #include "http_stream.h"
 #include "filter_resample.h"
 #include "joshvm_esp32_player.h"
+#include "joshvm_esp32_record.h"
 #include "joshvm.h"
 
 //---define
@@ -73,7 +74,6 @@ int joshvm_audio_play_handler(const char *url);
 
 static void esp_audio_state_task (void *para)
 {
-	EventBits_t uxBits;
     QueueHandle_t que = ((esp_audio_state_task_t *) para)->que;
 	joshvm_media_t *handle = ((esp_audio_state_task_t *) para)->handle;
     esp_audio_state_t esp_state = {0};
@@ -90,12 +90,12 @@ static void esp_audio_state_task (void *para)
 				errcode = JOSHVM_OK;	
 			}
 			joshvm_esp32_media_callback(handle,errcode);
-			uxBits = xEventGroupSetBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, J_STOP_BIT_0);
-			if((uxBits & J_STOP_BIT_0) != 0){
-				printf("Set stop bits when J_STOP_BIT_0 still set\n");
-			}else{
-				printf("Set stop bits when bits was clear\n");
-			}
+			xEventGroupSetBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, J_STOP_BIT_0);
+//			if((uxBits & J_STOP_BIT_0) != 0){
+//				printf("J_STOP_BIT_0 not clear\n");
+//			}else{
+//				printf("J_STOP_BIT_0 bits was clear\n");
+//			}
         } 			
     }
 }
@@ -118,9 +118,9 @@ int _http_stream_event_handle(http_stream_event_msg_t *msg)
 static void setup_player(joshvm_media_t* handle)
 {
     if (player) {
+		ESP_LOGW(TAG,"Player is NULL");
         return ;
     }
-
     esp_audio_cfg_t cfg = DEFAULT_ESP_AUDIO_CONFIG();
     cfg.resample_rate = 48000;
     cfg.prefer_type = ESP_AUDIO_PREFER_MEM;
@@ -147,6 +147,7 @@ static void setup_player(joshvm_media_t* handle)
     esp_audio_input_stream_add(player, http_stream_init(&http_cfg));
 
     //add to esp_audio
+    joshvm_esp32_i2s_create();
 	esp_audio_output_stream_add(player,josh_i2s_stream_writer);
 
     // Add decoders and encoders to esp_audio
@@ -176,9 +177,18 @@ static void setup_player(joshvm_media_t* handle)
 
 void joshvm_audio_player_destroy()
 {
-	vQueueDelete(esp_audio_state_task_param.que);
-	vTaskDelete(esp_audio_state_task_handler);
-	esp_audio_destroy(player);
+	if(esp_audio_destroy(player) == ESP_ERR_AUDIO_NO_ERROR){
+		player = NULL;
+		josh_i2s_stream_writer = NULL;
+	}
+	if(esp_audio_state_task_handler != NULL){
+		vTaskDelete(esp_audio_state_task_handler);
+		esp_audio_state_task_handler = NULL;
+	}
+	if(esp_audio_state_task_param.que != NULL){
+		vQueueDelete(esp_audio_state_task_param.que);
+		esp_audio_state_task_param.que = NULL;
+	}
 }
 
 joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
@@ -199,18 +209,6 @@ int joshvm_audio_play_handler(const char *url)
 		ESP_LOGI(TAG, "Playing : %s", url);
 		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
 	}	
-	/*
-	do{
-		esp_audio_state_get(player,&state);		
-		if(state.status == AUDIO_STATUS_RUNNING){
-			ESP_LOGW(TAG,"state :%d\n",state.status);
-			vTaskDelay(50 /portTICK_PERIOD_MS);
-		}
-	}while(state.status == AUDIO_STATUS_RUNNING);
-	ESP_LOGI(TAG, "Playing : %s", url);
-    ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
-	vTaskDelay(1000 /portTICK_PERIOD_MS);//notify voice can't play entirely 
-	*/
 	return ret;
 }
 
@@ -239,25 +237,24 @@ audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle)
 {
     ESP_LOGI(TAG, "Stop audio play");
 	int ret;
-	EventBits_t uxBits;
-	//esp_audio_state_t state;
-	//esp_audio_state_get(player,&state);
+	//EventBits_t uxBits;
+	esp_audio_state_t state;
 
 	ret =  esp_audio_stop(player, TERMINATION_TYPE_NOW);
-
-	uxBits = xEventGroupWaitBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, 
+	esp_audio_state_get(player,&state);
+	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
+		xEventGroupWaitBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, 
                                      J_STOP_BIT_0,            
                                      pdTRUE,             
                                      pdTRUE,             
-                                     100/portTICK_PERIOD_MS); 
-    if((uxBits & J_STOP_BIT_0) == J_STOP_BIT_0){       
-        printf("receive J_STOP_BIT_0\r\n");
-    }
-    else{        
-        printf("haven't receive J_STOP_BIT_0\r\n");
-    }
-	
-	
+                                     50/portTICK_PERIOD_MS); 
+	}
+//    if((uxBits & J_STOP_BIT_0) == J_STOP_BIT_0){       
+//        printf("receive J_STOP_BIT_0\r\n");
+//    }
+//    else{        
+//        printf("haven't receive J_STOP_BIT_0\r\n");
+//    }	
 	return ret;
 }
 
@@ -265,7 +262,7 @@ int joshvm_audio_get_state()
 {
     esp_audio_state_t st = {0};
 	if(player == NULL){
-    	return JOSHVM_MEDIA_STOPPED;
+    	return AUDIO_STATUS_STOPPED;
 	}
 	esp_audio_state_get(player, &st);
     return st.status;
@@ -330,202 +327,3 @@ void joshvm_volume_adjust_handler(int volume)
     }	
 }
 
-
-/*
-
-void duer_audio_wrapper_pause()
-{
-    if (duer_playing_type == DUER_AUDIO_TYPE_SPEECH) {
-        esp_audio_stop(player, 0);
-    } else {
-        ESP_LOGW(TAG, "duer_audio_wrapper_pause, type is music");
-    }
-}
-
-int duer_audio_wrapper_get_state()
-{
-    esp_audio_state_t st = {0};
-    esp_audio_state_get(player, &st);
-    return st.status;
-}
-
-void duer_dcs_listen_handler(void)
-{
-    ESP_LOGI(TAG, "enable_listen_handler, open mic");
-    rec_engine_trigger_start();
-}
-
-void duer_dcs_stop_listen_handler(void)
-{
-    ESP_LOGI(TAG, "stop_listen, close mic");
-    rec_engine_trigger_stop();
-}
-
-void duer_dcs_volume_set_handler(int volume)
-{
-    ESP_LOGI(TAG, "set_volume to %d", volume);
-    int ret = esp_audio_vol_set(player, volume);
-    if (ret == 0) {
-        ESP_LOGI(TAG, "report on_volume_changed");
-        duer_dcs_on_volume_changed();
-    }
-}
-
-void duer_dcs_volume_adjust_handler(int volume)
-{
-    ESP_LOGI(TAG, "adj_volume by %d", volume);
-    int vol = 0;
-    esp_audio_vol_get(player, &vol);
-    vol += volume;
-    int ret = esp_audio_vol_set(player, vol);
-    if (ret == 0) {
-        ESP_LOGI(TAG, "report on_volume_changed");
-        duer_dcs_on_volume_changed();
-    }
-}
-
-void duer_dcs_mute_handler(duer_bool is_mute)
-{
-    ESP_LOGI(TAG, "set_mute to  %d", (int)is_mute);
-    int ret = 0;
-    if (is_mute) {
-        ret = esp_audio_vol_set(player, 0);
-    }
-    if (ret == 0) {
-        ESP_LOGI(TAG, "report on_mute");
-        duer_dcs_on_mute();
-    }
-}
-
-void duer_dcs_get_speaker_state(int *volume, duer_bool *is_mute)
-{
-    ESP_LOGI(TAG, "duer_dcs_get_speaker_state");
-    *volume = 60;
-    *is_mute = false;
-    int ret = 0;
-    int vol = 0;
-    ret = esp_audio_vol_get(player, &vol);
-    if (ret != 0) {
-        ESP_LOGE(TAG, "Failed to get volume");
-    } else {
-        *volume = vol;
-        if (vol != 0) {
-            *is_mute = false;
-        } else {
-            *is_mute = true;
-        }
-    }
-}
-
-
-
-int duer_dcs_speak_handler(const char *url)
-{
-	int ret;
-    ESP_LOGI(TAG, "Playing speak: %s", url);
-    ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
-    duer_playing_type = DUER_AUDIO_TYPE_SPEECH;
-    xSemaphoreGive(s_mutex);
-	return ret;
-	
-}
-
-void duer_dcs_audio_play_handler(const duer_dcs_audio_info_t *audio_info)
-{
-    ESP_LOGI(TAG, "Playing audio, offset:%d url:%s", audio_info->offset, audio_info->url);
-    esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, audio_info->url, audio_info->offset);
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
-    duer_playing_type = DUER_AUDIO_TYPE_MUSIC;
-    player_pause = 0;
-    xSemaphoreGive(s_mutex);
-
-}
-
-void duer_dcs_audio_stop_handler()
-{
-    ESP_LOGI(TAG, "Stop audio play");
-    xSemaphoreTake(s_mutex, portMAX_DELAY);
-    int status = duer_playing_type;
-    xSemaphoreGive(s_mutex);
-    if (status == 1) {
-        ESP_LOGI(TAG, "Is playing speech, no need to stop");
-    } else {
-        esp_audio_stop(player, TERMINATION_TYPE_NOW);
-    }
-}
-
-void duer_dcs_audio_pause_handler()
-{
-    ESP_LOGI(TAG, "DCS pause audio play");
-    esp_audio_pos_get(player, &audio_pos);
-    player_pause = 1;
-    esp_audio_stop(player, 0);
-}
-
-void duer_dcs_audio_resume_handler(const duer_dcs_audio_info_t *audio_info)
-{
-    ESP_LOGI(TAG, "Resume audio, offset:%d url:%s", audio_info->offset, audio_info->url);
-    player_pause = 0;
-    esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, audio_info->url, audio_pos);
-}
-
-int duer_dcs_audio_get_play_progress()
-{
-    int ret = 0;
-    uint32_t total_size = 0;
-    int position = 0;
-    ret = esp_audio_pos_get(player, &position);
-    if (ret == 0) {
-        ESP_LOGI(TAG, "Get play position %d of %d", position, total_size);
-        return position;
-    } else {
-        ESP_LOGE(TAG, "Failed to get play progress.");
-        return -1;
-    }
-}
-
-duer_audio_type_t duer_dcs_get_player_type()
-{
-    return duer_playing_type;
-}
-
-int duer_dcs_set_player_type(duer_audio_type_t num)
-{
-    duer_playing_type = num;
-    return 0;
-}
-
-void duer_dcs_audio_active_paused()
-{
-    if (duer_dcs_send_play_control_cmd(DCS_PAUSE_CMD)) {
-        ESP_LOGE(TAG, "Send DCS_PAUSE_CMD to DCS failed");
-    }
-    ESP_LOGD(TAG, "duer_dcs_audio_active_paused");
-}
-
-void duer_dcs_audio_active_play()
-{
-    if (duer_dcs_send_play_control_cmd(DCS_PLAY_CMD)) {
-        ESP_LOGE(TAG, "Send DCS_PLAY_CMD to DCS failed");
-    }
-    ESP_LOGD(TAG, "duer_dcs_audio_active_play");
-}
-
-void duer_dcs_audio_active_previous()
-{
-    if (duer_dcs_send_play_control_cmd(DCS_PREVIOUS_CMD)) {
-        ESP_LOGE(TAG, "Send DCS_PREVIOUS_CMD to DCS failed");
-    }
-    ESP_LOGD(TAG, "Fduer_dcs_audio_active_previous");
-}
-
-void duer_dcs_audio_active_next()
-{
-    if (duer_dcs_send_play_control_cmd(DCS_NEXT_CMD)) {
-        ESP_LOGE(TAG, "Send DCS_NEXT_CMD to DCS failed");
-    }
-    ESP_LOGD(TAG, "duer_dcs_audio_active_next");
-}
-
-*/

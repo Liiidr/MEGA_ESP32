@@ -45,9 +45,6 @@ static void media_player_callback_test(void*handle,int para)
 
 
 //------------------test--end-----------------
-//留给播放结束的回调
-
-
 
 
 static void *handle_media_rec= NULL;
@@ -58,8 +55,6 @@ static void *handle_vad_rec = NULL;
 
 extern int esp32_playback_voice(int index);
 
-
-
 static void player_callback(void* para, int para2)
 {
 	printf("finish play  index = %d\n",para2);
@@ -68,8 +63,9 @@ static void player_callback(void* para, int para2)
 
 static void vad_callback(int index)
 {
-	printf("***vad*** callback  index = %d\n",index);
+	printf("***vad*** callback  %s\n",(index == 0 ? "start":"stop"));
 
+	#if 0
 	if(index){
 	/*	printf("\n");
 		heap_caps_print_heap_info(MALLOC_CAP_DEFAULT);
@@ -86,6 +82,8 @@ static void vad_callback(int index)
 		joshvm_esp32_media_set_source(handle_media_player,MP3_URI2);
 		joshvm_esp32_media_start(handle_media_player,player_callback);
 	}
+	*/
+	#endif
 }
 
 
@@ -93,23 +91,25 @@ static void wake_callback(int index)
 {
 	printf("wakeup callback  index = %d\n",index);
 	//esp32_playback_voice(4);
-	joshvm_esp32_media_create(4,&handle_vad_rec);
-	joshvm_esp32_vad_start(vad_callback);
-	
+	//joshvm_esp32_media_create(4,&handle_vad_rec);
+	joshvm_esp32_vad_start(vad_callback);	
 }
-
 
 void fun_test()
 {	
-	//joshvm_esp32_wakeup_enable(wake_callback);
-	/*
+	joshvm_esp32_wakeup_enable(wake_callback);
+	joshvm_esp32_media_create(4,&handle_vad_rec);
+	//joshvm_esp32_vad_start(vad_callback);
+		
 	joshvm_esp32_media_create(0,&handle_media_player);
-	
-	
-	
 	joshvm_esp32_media_set_source(handle_media_player,MP3_URI2);
 	joshvm_esp32_media_start(handle_media_player,player_callback);
-*/
+
+	vTaskDelay(5000);
+	//joshvm_esp32_media_stop(handle_media_player);
+
+	extern joshvm_err_t joshvm_esp32_i2s_deinit(void);
+	joshvm_esp32_i2s_deinit();
 
 	
 	while(1){
