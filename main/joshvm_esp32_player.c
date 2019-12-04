@@ -208,6 +208,7 @@ int joshvm_audio_play_handler(const char *url)
 	}else{
 		ESP_LOGI(TAG, "Playing : %s", url);
 		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
+		printf("esp_audio_play ret %d\n",ret);
 	}	
 	return ret;
 }

@@ -121,7 +121,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.46>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4602>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -422,13 +422,15 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 		audio_status = JOSHVM_MEDIA_PLAYING;
 		switch(handle->media_type){
 			case MEDIA_PLAYER:			
-				ret = joshvm_audio_resume_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url);
+				if(joshvm_audio_resume_handler(handle->joshvm_media_u.joshvm_media_mediaplayer.url) != ESP_OK) return JOSHVM_FAIL;
+				ret = JOSHVM_OK;
 				break;
 			case MEDIA_RECORDER:				
 				ret = JOSHVM_NOT_SUPPORTED;
 				break;
 			case AUDIO_TRACK:				
-				ret = audio_pipeline_resume(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline);
+				if(audio_pipeline_resume(handle->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
+				ret = JOSHVM_OK;
 				break;
 			case AUDIO_RECORDER:
 				ret = JOSHVM_NOT_SUPPORTED;
@@ -495,6 +497,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			if(audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_mediarecorder.recorder_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
 			//joshvm_media_recorder_release(handle);
 			ESP_LOGI(TAG,"MediaRecorder stop!");
+			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:	
 			handle->joshvm_media_u.joshvm_media_audiotrack.status = AUDIO_STOP;
@@ -507,8 +510,9 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			handle->joshvm_media_u.joshvm_media_audiorecorder.status = AUDIO_STOP;
 			que_val = QUE_RECORD_STOP;
 			xQueueSend(que, &que_val, (portTickType)0);
-			ret = audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline);
+			if(audio_pipeline_terminate(handle->joshvm_media_u.joshvm_media_audiorecorder.audiorecorder_t.pipeline) != ESP_OK)	return JOSHVM_FAIL;
 			joshvm_audio_rcorder_release(handle);
+			ret = JOSHVM_OK;
 			ESP_LOGI(TAG,"AudioRedorder stop!");
 			break;
 		default :
@@ -610,7 +614,8 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 			handle->joshvm_media_u.joshvm_media_audiorecorder.rb_callback = callback;
 			ret = joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audiorecorder.status,\
 											 handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb,buffer,size,bytesRead);
-			if(ret == JOSHVM_NOTIFY_LATER){					
+			if(ret == JOSHVM_NOTIFY_LATER){	
+				printf(" audio_recorder JOSHVM_NOTIFY_LATER\n");
 				handle->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag = NEED_CB;
 			}
 			break;
@@ -687,6 +692,12 @@ int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t va
 		return JOSHVM_FAIL;
 	}
 
+	if((value != 8000) && (value != 16000) && (value != 48000)
+	&& (value != 44100) && (value != 22050) && (value != 11025)){
+		ESP_LOGW(TAG,"sample_rate should be one of 8000 16000 48000 11025 22050 44100");
+		return JOSHVM_FAIL;
+	}
+		
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:					
@@ -715,6 +726,11 @@ int joshvm_esp32_media_set_channel_config(joshvm_media_t* handle, uint8_t value)
 {
 	if(handle == NULL){
 		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+	
+	if((value != 1) && (value != 2)){
+		ESP_LOGW(TAG,"channels only support 1 or 2");
 		return JOSHVM_FAIL;
 	}
 
@@ -746,6 +762,10 @@ int joshvm_esp32_media_set_audio_bit_rate(joshvm_media_t* handle, uint8_t value)
 {
 	if(handle == NULL){
 		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+	if((value != 8) && (value != 16)){
+		ESP_LOGW(TAG,"bitrates only support 8 or 16");
 		return JOSHVM_FAIL;
 	}
 

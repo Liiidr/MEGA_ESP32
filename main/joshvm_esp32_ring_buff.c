@@ -25,6 +25,7 @@ void ring_buffer_deinit(ring_buffer_t *rb)
 {
     if (rb->buffer != NULL){
         audio_free(rb->buffer);
+		rb->buffer = NULL;
     }
     memset(rb, 0, sizeof(ring_buffer_t));
 }
@@ -44,7 +45,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
     int32_t first_write_size = 0;
 	int32_t written_size = 0;
 
-	if(rb == NULL){
+	if((rb == NULL) || (rb->buffer == NULL)){
 		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
 		return -1;
 	}
@@ -94,7 +95,7 @@ uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb)
     int32_t first_read_size = 0;
 	uint32_t read_size = 0;//real size of data have been read
 
-	if(rb == NULL){
+	if((rb == NULL) || (rb->buffer == NULL)){
 		ESP_LOGE(TAG,"ringbuffer is NULL![%s][%d]",__FILE__,__LINE__);
 		return -1;
 	}

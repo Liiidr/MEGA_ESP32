@@ -394,7 +394,7 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
     }	
 
 	//---create i2s element
-	//audio_element_handle_t i2s_stream_writer = create_i2s_stream(PLAYBACK_RATE,PLAYBACK_BITS,PLAYBACK_CHANNEL,AUDIO_STREAM_WRITER);
+	joshvm_esp32_i2s_create();
 	//---create resample element
 	audio_element_handle_t filter_sample_el = create_filter(A_TRACK_RATE,A_TRACK_CHA, PLAYBACK_RATE, PLAYBACK_CHANNEL, RESAMPLE_DECODE_MODE);
 	//---create raw element
@@ -434,7 +434,7 @@ void joshvm_audio_track_task(void* handle)
 			while(1){//playing
 				do{
 					read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
-					if(read_size){
+					if(read_size >= 0){
 						track_check_time_cnt = 0;//clear  time
 						if(NEED_CB == rb_callback_flag){
 							rb_callback_flag = NO_NEED_CB;						
@@ -444,8 +444,14 @@ void joshvm_audio_track_task(void* handle)
 						raw_stream_write(raw_writer,(char*)voicebuff,read_size);
 						//printf("track 2 valid_size = %d\n",audio_track_rb->valid_size);
 					}
-				}while(read_size);
-				xQueueReceive(que, &que_val, 0);
+				}while(read_size >= 0);
+				if(que != NULL){	
+					xQueueReceive(que, &que_val, 0);
+				}else{
+					ESP_LOGE(TAG,"Are you close track without stop track before?");
+					task_run = 0;
+					break;
+				}
 				if((que_val == QUE_TRACK_STOP) && (track_check_time_cnt * 200 >= TRACK_CHENK_TIMEOUT)){
 					//printf("QUE_TRACK_STOP\n");
 					task_run = 0;
@@ -523,11 +529,17 @@ void joshvm_audio_recorder_task(void* handle)
 	while(1){	
 		actually_read = raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
 		written_size = ring_buffer_write(voicebuff,actually_read,audio_recorder_rb,RB_COVER);
-		if((written_size) && (NEED_CB == rb_callback_flag)){
+		if((written_size >= 0) && (NEED_CB == rb_callback_flag)){
 			rb_callback_flag = NO_NEED_CB;
 			callback(handle,JOSHVM_OK);
+			printf("audio_recorder rb_callback\n");
 		}
-		xQueueReceive(que, &que_val, (portTickType)0);
+		if(que != NULL){
+			xQueueReceive(que, &que_val, (portTickType)0);
+		}else{
+			ESP_LOGE(TAG,"Are you close recorder without stop recorder before?");
+			break;
+		}
 		if(que_val == QUE_RECORD_STOP){
 			ESP_LOGI(TAG,"break recorder task");
 			break;
