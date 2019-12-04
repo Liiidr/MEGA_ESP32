@@ -121,7 +121,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4602>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4604>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -406,7 +406,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				break;
 			case AUDIO_RECORDER:
 				handle->joshvm_media_u.joshvm_media_audiorecorder.status = AUDIO_START;
-				handle->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag = NO_NEED_CB;			
+				handle->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag = NO_NEED_CB;	
 				if(joshvm_audio_recorder_init(handle) != JOSHVM_OK){
 					joshvm_esp32_media_close(handle);
 					return JOSHVM_FAIL;
@@ -607,7 +607,6 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 		return JOSHVM_FAIL;
 	}
 
-
 	int ret = JOSHVM_OK;
 	switch(handle->media_type){
 		case AUDIO_RECORDER:
@@ -615,7 +614,6 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 			ret = joshvm_audio_recorder_read(handle->joshvm_media_u.joshvm_media_audiorecorder.status,\
 											 handle->joshvm_media_u.joshvm_media_audiorecorder.rec_rb,buffer,size,bytesRead);
 			if(ret == JOSHVM_NOTIFY_LATER){	
-				printf(" audio_recorder JOSHVM_NOTIFY_LATER\n");
 				handle->joshvm_media_u.joshvm_media_audiorecorder.rb_callback_flag = NEED_CB;
 			}
 			break;
