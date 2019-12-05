@@ -30,28 +30,28 @@
 #define RECORD_CHANNEL      2
 #define RECORD_BITS         16
 
-#define SAVE_FILE_RATE      handle->j_union.joshvm_media_mediarecorder.sample_rate	
-#define SAVE_FILE_CHANNEL   handle->j_union.joshvm_media_mediarecorder.channel
-#define SAVE_FILE_BITS      handle->j_union.joshvm_media_mediarecorder.bit_rate
+#define SAVE_FILE_RATE      handle->j_union.mediaRecorder.sample_rate	
+#define SAVE_FILE_CHANNEL   handle->j_union.mediaRecorder.channel
+#define SAVE_FILE_BITS      handle->j_union.mediaRecorder.bit_rate
 
 #define PLAYBACK_RATE       48000
 #define PLAYBACK_CHANNEL    2
 #define PLAYBACK_BITS       16
 
 //---element cfg
-#define M_REC_CFG_FORMAT	handle->j_union.joshvm_media_mediarecorder.format
-#define M_REC_CFG_URL		handle->j_union.joshvm_media_mediarecorder.url
-#define M_REC_CFG_RATE 		handle->j_union.joshvm_media_mediarecorder.sample_rate
-#define M_REC_CFG_CHANNEL 	handle->j_union.joshvm_media_mediarecorder.channel
-#define M_REC_CFG_BITS		handle->j_union.joshvm_media_mediarecorder.bit_rate
+#define M_REC_CFG_FORMAT	handle->j_union.mediaRecorder.format
+#define M_REC_CFG_URL		handle->j_union.mediaRecorder.url
+#define M_REC_CFG_RATE 		handle->j_union.mediaRecorder.sample_rate
+#define M_REC_CFG_CHANNEL 	handle->j_union.mediaRecorder.channel
+#define M_REC_CFG_BITS		handle->j_union.mediaRecorder.bit_rate
 
-#define A_RECORD_RATE 		handle->j_union.joshvm_media_audiorecorder.sample_rate
-#define A_RECORD_CHA 		handle->j_union.joshvm_media_audiorecorder.channel
-#define A_RECORD_BITS		handle->j_union.joshvm_media_audiorecorder.bit_rate
+#define A_RECORD_RATE 		handle->j_union.audioRecorder.sample_rate
+#define A_RECORD_CHA 		handle->j_union.audioRecorder.channel
+#define A_RECORD_BITS		handle->j_union.audioRecorder.bit_rate
 
-#define	A_TRACK_RATE		handle->j_union.joshvm_media_audiotrack.sample_rate
-#define	A_TRACK_CHA			handle->j_union.joshvm_media_audiotrack.channel
-#define A_TRACK_BITS		handle->j_union.joshvm_media_audiotrack.bit_rate
+#define	A_TRACK_RATE		handle->j_union.audioTrack.sample_rate
+#define	A_TRACK_CHA			handle->j_union.audioTrack.channel
+#define A_TRACK_BITS		handle->j_union.audioTrack.bit_rate
 
 #define TRACK_CHENK_TIMEOUT 800
 //---variable
@@ -263,33 +263,33 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	audio_pipeline_register(recorder, filter, "resample_media_rec");
 	
 	//---create encoder element
-	if(joshvm_meida_format_wav == handle->j_union.joshvm_media_mediarecorder.format){
+	if(joshvm_meida_format_wav == handle->j_union.mediaRecorder.format){
 		audio_element_handle_t wav_encoder = create_wav_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);
 		audio_pipeline_register(recorder, wav_encoder, "encode_media_rec");
-		handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder = wav_encoder;
-	}else if(joshvm_meida_format_amrnb == handle->j_union.joshvm_media_mediarecorder.format){		
+		handle->j_union.mediaRecorder.recorder_t.encoder = wav_encoder;
+	}else if(joshvm_meida_format_amrnb == handle->j_union.mediaRecorder.format){		
 		audio_element_handle_t amrnb_encoder = create_amrnb_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);		
 		audio_pipeline_register(recorder, amrnb_encoder, "encode_media_rec");
-		handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder = amrnb_encoder;
-	}else if(joshvm_meida_format_amrwb == handle->j_union.joshvm_media_mediarecorder.format){
+		handle->j_union.mediaRecorder.recorder_t.encoder = amrnb_encoder;
+	}else if(joshvm_meida_format_amrwb == handle->j_union.mediaRecorder.format){
 		audio_element_handle_t amrwb_encoder = create_amrwb_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);		
 		audio_pipeline_register(recorder, amrwb_encoder, "encode_media_rec");
-		handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder = amrwb_encoder;
-	}else if(joshvm_meida_format_opus == handle->j_union.joshvm_media_mediarecorder.format){
+		handle->j_union.mediaRecorder.recorder_t.encoder = amrwb_encoder;
+	}else if(joshvm_meida_format_opus == handle->j_union.mediaRecorder.format){
 		audio_element_handle_t opus_encoder = create_opus_encoder(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL);
 		audio_pipeline_register(recorder, opus_encoder, "encode_media_rec");
-		handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder = opus_encoder; 
+		handle->j_union.mediaRecorder.recorder_t.encoder = opus_encoder; 
 	}
 	
 	audio_pipeline_register(recorder, fatfs_writer, "fatfs_media_rec");
     audio_pipeline_link(recorder, (const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","fatfs_media_rec"}, 4);
-	audio_element_set_uri(fatfs_writer,handle->j_union.joshvm_media_mediarecorder.url);
-	ESP_LOGI(TAG,"Set default url:%s",handle->j_union.joshvm_media_mediarecorder.url);	
+	audio_element_set_uri(fatfs_writer,handle->j_union.mediaRecorder.url);
+	ESP_LOGI(TAG,"Set default url:%s",handle->j_union.mediaRecorder.url);	
     ESP_LOGI(TAG, "Recorder has been created");
-	handle->j_union.joshvm_media_mediarecorder.recorder_t.i2s = josh_i2s_stream_reader;
-	handle->j_union.joshvm_media_mediarecorder.recorder_t.filter = filter;
-	handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer = fatfs_writer;
-	handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline = recorder;
+	handle->j_union.mediaRecorder.recorder_t.i2s = josh_i2s_stream_reader;
+	handle->j_union.mediaRecorder.recorder_t.filter = filter;
+	handle->j_union.mediaRecorder.recorder_t.stream_writer = fatfs_writer;
+	handle->j_union.mediaRecorder.recorder_t.pipeline = recorder;
 	
     return JOSHVM_OK;
 }
@@ -298,32 +298,32 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 {
 	ESP_LOGI(TAG, "joshvm_meida_recorder_cfg");
 	//---filter_destination cfg
-	rsp_filter_set_dest_info(handle->j_union.joshvm_media_mediarecorder.recorder_t.filter,M_REC_CFG_RATE,M_REC_CFG_CHANNEL);
+	rsp_filter_set_dest_info(handle->j_union.mediaRecorder.recorder_t.filter,M_REC_CFG_RATE,M_REC_CFG_CHANNEL);
 	
 	//---encoder cfg 
 	audio_element_info_t encoder_info = {0};
-	audio_element_getinfo(handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder, &encoder_info);
+	audio_element_getinfo(handle->j_union.mediaRecorder.recorder_t.encoder, &encoder_info);
 	encoder_info.sample_rates = M_REC_CFG_RATE;
 	encoder_info.channels = M_REC_CFG_CHANNEL;
 	encoder_info.bits = M_REC_CFG_BITS;
-	audio_element_setinfo(handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder, &encoder_info);		
+	audio_element_setinfo(handle->j_union.mediaRecorder.recorder_t.encoder, &encoder_info);		
 	ESP_LOGI(TAG,"Prepare encoder_info %d  %d  %d",encoder_info.sample_rates,encoder_info.channels,encoder_info.bits);
 
 	//---fatfs cfg
 	audio_element_info_t writer_info = {0};
-    audio_element_getinfo(handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer, &writer_info);
+    audio_element_getinfo(handle->j_union.mediaRecorder.recorder_t.stream_writer, &writer_info);
     writer_info.bits = M_REC_CFG_BITS;
     writer_info.channels = M_REC_CFG_CHANNEL;
     writer_info.sample_rates = M_REC_CFG_RATE;
-    audio_element_setinfo(handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer, &writer_info);	
+    audio_element_setinfo(handle->j_union.mediaRecorder.recorder_t.stream_writer, &writer_info);	
 	ESP_LOGI(TAG,"Prepare fatfs_info %d  %d  %d",writer_info.sample_rates,writer_info.channels,writer_info.bits);
-	int ret = audio_element_set_uri(handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer,\
-									handle->j_union.joshvm_media_mediarecorder.url);
-	audio_pipeline_breakup_elements(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline,\
-									handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer);
-	audio_pipeline_relink(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline, \
+	int ret = audio_element_set_uri(handle->j_union.mediaRecorder.recorder_t.stream_writer,\
+									handle->j_union.mediaRecorder.url);
+	audio_pipeline_breakup_elements(handle->j_union.mediaRecorder.recorder_t.pipeline,\
+									handle->j_union.mediaRecorder.recorder_t.stream_writer);
+	audio_pipeline_relink(handle->j_union.mediaRecorder.recorder_t.pipeline, \
 		(const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","fatfs_media_rec"}, 4);
-	ESP_LOGI(TAG,"Prepare url:%s,ret=%d",handle->j_union.joshvm_media_mediarecorder.url,ret);
+	ESP_LOGI(TAG,"Prepare url:%s,ret=%d",handle->j_union.mediaRecorder.url,ret);
 	
 	return JOSHVM_OK;
 }
@@ -334,25 +334,25 @@ int joshvm_media_get_state(joshvm_media_t* handle,int* state)
 	switch(handle->media_type)
 	{
 		case MEDIA_RECORDER:
-			if(handle->j_union.joshvm_media_mediarecorder.recorder_t.i2s == NULL){
+			if(handle->j_union.mediaRecorder.recorder_t.i2s == NULL){
 				*state = JOSHVM_MEDIA_STOPPED;//??
 				return JOSHVM_OK;
 			}
-			ret = audio_element_get_state(handle->j_union.joshvm_media_mediarecorder.recorder_t.i2s);
+			ret = audio_element_get_state(handle->j_union.mediaRecorder.recorder_t.i2s);
 			break;
 		case AUDIO_TRACK:
-			if(handle->j_union.joshvm_media_audiotrack.audiotrack_t.i2s == NULL){
+			if(handle->j_union.audioTrack.audiotrack_t.i2s == NULL){
 				*state = JOSHVM_MEDIA_STOPPED;//??
 				return JOSHVM_OK;
 			}
-			ret = audio_element_get_state(handle->j_union.joshvm_media_audiotrack.audiotrack_t.i2s);		
+			ret = audio_element_get_state(handle->j_union.audioTrack.audiotrack_t.i2s);		
 			break;
 		case AUDIO_RECORDER:
-			if(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.i2s == NULL){
+			if(handle->j_union.audioRecorder.audiorecorder_t.i2s == NULL){
 				*state = JOSHVM_MEDIA_STOPPED;//??
 				return JOSHVM_OK;
 			}
-			ret = audio_element_get_state(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.i2s);
+			ret = audio_element_get_state(handle->j_union.audioRecorder.audiorecorder_t.i2s);
 			
 			break;
 		default :
@@ -408,10 +408,10 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
     audio_pipeline_link(audio_track, (const char *[]) {"raw_audio_tra","upsample_audio_tra", "i2s_audio_tra"}, 3);
 	
     //ESP_LOGI(TAG, "track has been created");
-	handle->j_union.joshvm_media_audiotrack.audiotrack_t.i2s = josh_i2s_stream_writer;	
-	handle->j_union.joshvm_media_audiotrack.audiotrack_t.filter = filter_sample_el;	
-	handle->j_union.joshvm_media_audiotrack.audiotrack_t.raw_writer = raw_writer;
-	handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline = audio_track;
+	handle->j_union.audioTrack.audiotrack_t.i2s = josh_i2s_stream_writer;	
+	handle->j_union.audioTrack.audiotrack_t.filter = filter_sample_el;	
+	handle->j_union.audioTrack.audiotrack_t.raw_writer = raw_writer;
+	handle->j_union.audioTrack.audiotrack_t.pipeline = audio_track;
 	ESP_LOGW(TAG,"joshvm_audio_track_init = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 
 	return audio_pipeline_run(audio_track);
@@ -424,8 +424,8 @@ void joshvm_audio_track_task(void* handle)
 	uint8_t task_run = 1;
 	int32_t read_size = 0;
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
-	audio_element_handle_t raw_writer = ((joshvm_media_t*)handle)->j_union.joshvm_media_audiotrack.audiotrack_t.raw_writer;
-	ring_buffer_t* audio_track_rb = ((joshvm_media_t*)handle)->j_union.joshvm_media_audiotrack.track_rb;
+	audio_element_handle_t raw_writer = ((joshvm_media_t*)handle)->j_union.audioTrack.audiotrack_t.raw_writer;
+	ring_buffer_t* audio_track_rb = ((joshvm_media_t*)handle)->j_union.audioTrack.track_rb;
 	while(task_run){
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
@@ -434,9 +434,9 @@ void joshvm_audio_track_task(void* handle)
 					read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
 					if(read_size > 0){
 						track_check_time_cnt = 0;//clear  time
-						if(NEED_CB == ((joshvm_media_t*)handle)->j_union.joshvm_media_audiotrack.rb_callback_flag){
-							((joshvm_media_t*)handle)->j_union.joshvm_media_audiotrack.rb_callback_flag = NO_NEED_CB;
-							void(*callback)(void*, int) = ((joshvm_media_t*)handle)->j_union.joshvm_media_audiotrack.rb_callback;
+						if(NEED_CB == ((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback_flag){
+							((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;
+							void(*callback)(void*, int) = ((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback;
 							if(callback)callback(handle,JOSHVM_OK);
 						}						
 						raw_stream_write(raw_writer,(char*)voicebuff,read_size);
@@ -456,6 +456,7 @@ void joshvm_audio_track_task(void* handle)
 			}	
 		}		
 	}
+	ESP_LOGI(TAG,"AudioTrack finish playing");
 	joshvm_audio_track_release(handle);
 	if(voicebuff != NULL){
 		audio_free(voicebuff);
@@ -504,10 +505,10 @@ int joshvm_audio_recorder_init(joshvm_media_t* handle)
     audio_pipeline_link(audio_recorder, (const char *[]) {"i2s_aduio_rec", "filter_aduio_rec","raw_aduio_rec"}, 3);
 	
     //ESP_LOGI(TAG, "Recorder has been created");
-	handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.i2s = josh_i2s_stream_reader;	
-	handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.filter = filter;	
-	handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.raw_reader = raw_reader;
-	handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline = audio_recorder;	
+	handle->j_union.audioRecorder.audiorecorder_t.i2s = josh_i2s_stream_reader;	
+	handle->j_union.audioRecorder.audiorecorder_t.filter = filter;	
+	handle->j_union.audioRecorder.audiorecorder_t.raw_reader = raw_reader;
+	handle->j_union.audioRecorder.audiorecorder_t.pipeline = audio_recorder;	
 	
 	return audio_pipeline_run(audio_recorder);
 }
@@ -518,16 +519,16 @@ void joshvm_audio_recorder_task(void* handle)
 	int32_t actually_read = 0; 
 	uint16_t que_val = 0;	
 	int32_t written_size = 0;
-	ring_buffer_t* audio_recorder_rb = ((joshvm_media_t*)handle)->j_union.joshvm_media_audiorecorder.rec_rb;
+	ring_buffer_t* audio_recorder_rb = ((joshvm_media_t*)handle)->j_union.audioRecorder.rec_rb;
 	int16_t *voicebuff = (int16_t *)audio_malloc(VOICEBUFF_SIZE * sizeof(short));
-	audio_element_handle_t raw_rec = ((joshvm_media_t*)handle)->j_union.joshvm_media_audiorecorder.audiorecorder_t.raw_reader;    
+	audio_element_handle_t raw_rec = ((joshvm_media_t*)handle)->j_union.audioRecorder.audiorecorder_t.raw_reader;    
 
 	while(1){	
 		actually_read = raw_stream_read(raw_rec,(char*)voicebuff,VOICEBUFF_SIZE * sizeof(short));
 		written_size = ring_buffer_write(voicebuff,actually_read,audio_recorder_rb,RB_COVER);
-		if((written_size > 0) && (NEED_CB == ((joshvm_media_t*)handle)->j_union.joshvm_media_audiorecorder.rb_callback_flag)){
-			((joshvm_media_t*)handle)->j_union.joshvm_media_audiorecorder.rb_callback_flag = NO_NEED_CB;
-			void(*callback)(void*, int) = ((joshvm_media_t*)handle)->j_union.joshvm_media_audiorecorder.rb_callback;
+		if((written_size > 0) && (NEED_CB == ((joshvm_media_t*)handle)->j_union.audioRecorder.rb_callback_flag)){
+			((joshvm_media_t*)handle)->j_union.audioRecorder.rb_callback_flag = NO_NEED_CB;
+			void(*callback)(void*, int) = ((joshvm_media_t*)handle)->j_union.audioRecorder.rb_callback;
 			if (callback){
 				callback(handle,JOSHVM_OK);
 			}
@@ -567,50 +568,50 @@ int joshvm_audio_recorder_read(uint8_t status,ring_buffer_t* rb,unsigned char* b
 
 void joshvm_media_recorder_release(joshvm_media_t* handle)
 {
-	audio_pipeline_terminate(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline,\
-							  handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline,\
-							  handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline,\
-							  handle->j_union.joshvm_media_mediarecorder.recorder_t.filter);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline,\
-							  handle->j_union.joshvm_media_mediarecorder.recorder_t.i2s);
-	audio_pipeline_deinit(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline);
-    audio_element_deinit(handle->j_union.joshvm_media_mediarecorder.recorder_t.stream_writer);
-    audio_element_deinit(handle->j_union.joshvm_media_mediarecorder.recorder_t.encoder);
-	audio_element_deinit(handle->j_union.joshvm_media_mediarecorder.recorder_t.filter);
-    //audio_element_deinit(handle->j_union.joshvm_media_mediarecorder.recorder_t.i2s);
+	audio_pipeline_terminate(handle->j_union.mediaRecorder.recorder_t.pipeline);
+    audio_pipeline_unregister(handle->j_union.mediaRecorder.recorder_t.pipeline,\
+							  handle->j_union.mediaRecorder.recorder_t.stream_writer);
+    audio_pipeline_unregister(handle->j_union.mediaRecorder.recorder_t.pipeline,\
+							  handle->j_union.mediaRecorder.recorder_t.encoder);
+    audio_pipeline_unregister(handle->j_union.mediaRecorder.recorder_t.pipeline,\
+							  handle->j_union.mediaRecorder.recorder_t.filter);
+    audio_pipeline_unregister(handle->j_union.mediaRecorder.recorder_t.pipeline,\
+							  handle->j_union.mediaRecorder.recorder_t.i2s);
+	audio_pipeline_deinit(handle->j_union.mediaRecorder.recorder_t.pipeline);
+    audio_element_deinit(handle->j_union.mediaRecorder.recorder_t.stream_writer);
+    audio_element_deinit(handle->j_union.mediaRecorder.recorder_t.encoder);
+	audio_element_deinit(handle->j_union.mediaRecorder.recorder_t.filter);
+    //audio_element_deinit(handle->j_union.mediaRecorder.recorder_t.i2s);
 }
 
 void joshvm_audio_track_release(joshvm_media_t* handle)
 {
-	audio_pipeline_terminate(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline,\
-		   					  handle->j_union.joshvm_media_audiotrack.audiotrack_t.raw_writer);
-	audio_pipeline_unregister(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline,\
-		                      handle->j_union.joshvm_media_audiotrack.audiotrack_t.filter);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline,\
-		                      handle->j_union.joshvm_media_audiotrack.audiotrack_t.i2s);
-    audio_pipeline_deinit(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline);
-    audio_element_deinit(handle->j_union.joshvm_media_audiotrack.audiotrack_t.raw_writer);	
-    audio_element_deinit(handle->j_union.joshvm_media_audiotrack.audiotrack_t.filter);
-    //audio_element_deinit(handle->j_union.joshvm_media_audiotrack.audiotrack_t.i2s);
+	audio_pipeline_terminate(handle->j_union.audioTrack.audiotrack_t.pipeline);
+    audio_pipeline_unregister(handle->j_union.audioTrack.audiotrack_t.pipeline,\
+		   					  handle->j_union.audioTrack.audiotrack_t.raw_writer);
+	audio_pipeline_unregister(handle->j_union.audioTrack.audiotrack_t.pipeline,\
+		                      handle->j_union.audioTrack.audiotrack_t.filter);
+    audio_pipeline_unregister(handle->j_union.audioTrack.audiotrack_t.pipeline,\
+		                      handle->j_union.audioTrack.audiotrack_t.i2s);
+    audio_pipeline_deinit(handle->j_union.audioTrack.audiotrack_t.pipeline);
+    audio_element_deinit(handle->j_union.audioTrack.audiotrack_t.raw_writer);	
+    audio_element_deinit(handle->j_union.audioTrack.audiotrack_t.filter);
+    //audio_element_deinit(handle->j_union.audioTrack.audiotrack_t.i2s);
 }
 
 void joshvm_audio_rcorder_release(joshvm_media_t* handle)
 {
-	audio_pipeline_terminate(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline);	
-    audio_pipeline_unregister(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline, \
-		                      handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.raw_reader);	
-	audio_pipeline_unregister(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline,\
-							  handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.filter);
-    audio_pipeline_unregister(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline,\
-		                      handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.i2s);
-    audio_pipeline_deinit(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline);
-    audio_element_deinit(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.raw_reader);	
-    audio_element_deinit(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.filter);
-    //audio_element_deinit(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.i2s);	
+	audio_pipeline_terminate(handle->j_union.audioRecorder.audiorecorder_t.pipeline);	
+    audio_pipeline_unregister(handle->j_union.audioRecorder.audiorecorder_t.pipeline, \
+		                      handle->j_union.audioRecorder.audiorecorder_t.raw_reader);	
+	audio_pipeline_unregister(handle->j_union.audioRecorder.audiorecorder_t.pipeline,\
+							  handle->j_union.audioRecorder.audiorecorder_t.filter);
+    audio_pipeline_unregister(handle->j_union.audioRecorder.audiorecorder_t.pipeline,\
+		                      handle->j_union.audioRecorder.audiorecorder_t.i2s);
+    audio_pipeline_deinit(handle->j_union.audioRecorder.audiorecorder_t.pipeline);
+    audio_element_deinit(handle->j_union.audioRecorder.audiorecorder_t.raw_reader);	
+    audio_element_deinit(handle->j_union.audioRecorder.audiorecorder_t.filter);
+    //audio_element_deinit(handle->j_union.audioRecorder.audiorecorder_t.i2s);	
 }
 
 

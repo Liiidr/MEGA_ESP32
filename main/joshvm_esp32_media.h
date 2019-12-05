@@ -124,11 +124,11 @@ typedef struct {
 	QueueHandle_t	evt_que;
 
 	union{
-		joshvm_media_mediaplayer_t joshvm_media_mediaplayer;
-		joshvm_media_mediarecorder_t joshvm_media_mediarecorder;
-		joshvm_media_audiotrack_t joshvm_media_audiotrack;
-		joshvm_media_audiorecorder_t joshvm_media_audiorecorder;
-		joshvm_media_audio_vad_rec_t joshvm_media_audio_vad_rec;
+		joshvm_media_mediaplayer_t mediaPlayer;
+		joshvm_media_mediarecorder_t mediaRecorder;
+		joshvm_media_audiotrack_t audioTrack;
+		joshvm_media_audiorecorder_t audioRecorder;
+		joshvm_media_audio_vad_rec_t vad;
 	}j_union;
 	
 }joshvm_media_t;

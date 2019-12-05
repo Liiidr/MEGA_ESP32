@@ -124,21 +124,24 @@ void fun_test()
 
 void player_test()
 {
+	joshvm_esp32_media_create(0,&handle_media_player_test);
+
+	while(1){
+		//joshvm_esp32_media_set_source(handle_media_player_test,"/userdata/ding.mp3");
+		//joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
+		//while(callback_temp);
 
 
-	joshvm_esp32_media_set_source(handle_media_player_test,"/userdata/ding.mp3");
-	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
-	while(callback_temp);
-
-
-	joshvm_esp32_media_set_source(handle_media_player_test,test_url);
-	joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
-	//while(callback_temp);
-	
-	
-	vTaskDelay(2000 / portTICK_PERIOD_MS);
-	//joshvm_esp32_media_stop(handle_media_player_test);
-	//vTaskDelay(1000 / portTICK_PERIOD_MS);
+		//joshvm_esp32_media_set_source(handle_media_player_test,"/userdata/ding.mp3");
+		joshvm_esp32_media_start(handle_media_player_test,media_player_callback_test);
+		//while(callback_temp);
+		
+		
+		vTaskDelay(3000 / portTICK_PERIOD_MS);
+		//joshvm_esp32_media_stop(handle_media_player_test);
+		//vTaskDelay(1000 / portTICK_PERIOD_MS);
+		joshvm_esp32_media_stop(handle_media_player_test);
+	}
 
 
 }
@@ -184,8 +187,8 @@ void test_esp32_media(void)
 	//audio_track  audio_recorder
 
 	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
-	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-	joshvm_esp32_media_stop(handle_recorder_test);
+	//vTaskDelay(10000 / portTICK_PERIOD_MS); 
+	//joshvm_esp32_media_stop(handle_recorder_test);
 
 	//joshvm_esp32_vad_stop();
 
@@ -194,13 +197,13 @@ void test_esp32_media(void)
 	//joshvm_esp32_vad_stop();
 
 
-	((joshvm_media_t*)handle_track_test)->j_union.joshvm_media_audiotrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->j_union.joshvm_media_audiorecorder.rec_rb;
+	((joshvm_media_t*)handle_track_test)->j_union.audioTrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->j_union.audioRecorder.rec_rb;
 
 
 	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
 
 	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->j_union.joshvm_media_audiotrack.audiotrack_t.i2s));
+	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->j_union.audioTrack.audiotrack_t.i2s));
 	joshvm_esp32_media_stop(handle_track_test);
 
 

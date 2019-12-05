@@ -66,7 +66,7 @@ void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 	ESP_LOGI(TAG,"joshvm_esp32_media_callback");
 
 	//audio_status = JOSHVM_MEDIA_RESERVE;
-	handle->j_union.joshvm_media_mediaplayer.callback(handle,errcode);
+	handle->j_union.mediaPlayer.callback(handle,errcode);
 }
 
 joshvm_err_t joshvm_mep32_board_init()
@@ -121,7 +121,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4701>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4702>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -143,7 +143,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media = (joshvm_media_t*)audio_calloc(1, sizeof(joshvm_media_t));
 					joshvm_media->media_type = type;
 					joshvm_media->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
-					if((joshvm_media->j_union.joshvm_media_mediaplayer.evt_group_stop = xEventGroupCreate()) == NULL){
+					if((joshvm_media->j_union.mediaPlayer.evt_group_stop = xEventGroupCreate()) == NULL){
 						ESP_LOGE(TAG,"player evt_group_stop create failed!");						
 						return JOSHVM_FAIL;
 					} 
@@ -166,11 +166,11 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->media_type = type;
 					joshvm_media->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 					
-					joshvm_media->j_union.joshvm_media_mediarecorder.format = j_meida_rec_default_cfg.format;
-					joshvm_media->j_union.joshvm_media_mediarecorder.url = j_meida_rec_default_cfg.url;
-					joshvm_media->j_union.joshvm_media_mediarecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
-					joshvm_media->j_union.joshvm_media_mediarecorder.channel = j_meida_rec_default_cfg.channel;
-					joshvm_media->j_union.joshvm_media_mediarecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
+					joshvm_media->j_union.mediaRecorder.format = j_meida_rec_default_cfg.format;
+					joshvm_media->j_union.mediaRecorder.url = j_meida_rec_default_cfg.url;
+					joshvm_media->j_union.mediaRecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
+					joshvm_media->j_union.mediaRecorder.channel = j_meida_rec_default_cfg.channel;
+					joshvm_media->j_union.mediaRecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
 				
 //					if(joshvm_meida_recorder_init(joshvm_media) != JOSHVM_OK){
 //						joshvm_esp32_media_close(joshvm_media);
@@ -196,11 +196,11 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 					
 					ring_buffer_init(&audio_track_rb,A_TRACK_RB_SIZE);
-					joshvm_media->j_union.joshvm_media_audiotrack.sample_rate = j_audio_track_default_cfg.sample_rate;
-					joshvm_media->j_union.joshvm_media_audiotrack.channel = j_audio_track_default_cfg.channel;
-					joshvm_media->j_union.joshvm_media_audiotrack.bit_rate = j_audio_track_default_cfg.bit_rate;
+					joshvm_media->j_union.audioTrack.sample_rate = j_audio_track_default_cfg.sample_rate;
+					joshvm_media->j_union.audioTrack.channel = j_audio_track_default_cfg.channel;
+					joshvm_media->j_union.audioTrack.bit_rate = j_audio_track_default_cfg.bit_rate;
 
-					joshvm_media->j_union.joshvm_media_audiotrack.track_rb = &audio_track_rb;
+					joshvm_media->j_union.audioTrack.track_rb = &audio_track_rb;
 					ESP_LOGI(TAG,"AudioTrack created!");					
 					*handle = joshvm_media;
 					ret = JOSHVM_OK;
@@ -222,10 +222,10 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 					
 					ring_buffer_init(&audio_recorder_rb,A_RECORD_RB_SIZE);
-					joshvm_media->j_union.joshvm_media_audiorecorder.sample_rate = j_audio_rec_default_cfg.sample_rate;
-					joshvm_media->j_union.joshvm_media_audiorecorder.channel = j_audio_rec_default_cfg.channel;
-					joshvm_media->j_union.joshvm_media_audiorecorder.bit_rate = j_audio_rec_default_cfg.bit_rate;
-					joshvm_media->j_union.joshvm_media_audiorecorder.rec_rb = &audio_recorder_rb;
+					joshvm_media->j_union.audioRecorder.sample_rate = j_audio_rec_default_cfg.sample_rate;
+					joshvm_media->j_union.audioRecorder.channel = j_audio_rec_default_cfg.channel;
+					joshvm_media->j_union.audioRecorder.bit_rate = j_audio_rec_default_cfg.bit_rate;
+					joshvm_media->j_union.audioRecorder.rec_rb = &audio_recorder_rb;
 					ESP_LOGI(TAG,"AudioRecorder created!");					
 					*handle = joshvm_media;
 					ret = JOSHVM_OK;
@@ -247,7 +247,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 			joshvm_media_vad->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 
 			ring_buffer_init(&audio_vad_rb,A_VAD_RB_SIZE);
-			joshvm_media_vad->j_union.joshvm_media_audio_vad_rec.rec_rb = &audio_vad_rb;				
+			joshvm_media_vad->j_union.vad.rec_rb = &audio_vad_rb;				
 			ESP_LOGI(TAG,"VAD AudioRecorder created!");					
 			*handle = joshvm_media_vad;
 			ret = JOSHVM_OK;			
@@ -274,9 +274,9 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			m_player_obj_created_status = OBJ_CREATED_NOT;	
 			xSemaphoreGive(s_mutex_player);
 			joshvm_esp32_media_stop(handle);
-			if(handle->j_union.joshvm_media_mediaplayer.evt_group_stop != NULL){
-				vEventGroupDelete(handle->j_union.joshvm_media_mediaplayer.evt_group_stop);
-				handle->j_union.joshvm_media_mediaplayer.evt_group_stop = NULL;
+			if(handle->j_union.mediaPlayer.evt_group_stop != NULL){
+				vEventGroupDelete(handle->j_union.mediaPlayer.evt_group_stop);
+				handle->j_union.mediaPlayer.evt_group_stop = NULL;
 			}
 			ESP_LOGI(TAG,"MediaPlayer closed!");			
 			break;
@@ -288,19 +288,19 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			break;
 		case AUDIO_TRACK:
 			a_track_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->j_union.joshvm_media_audiotrack.track_rb);
+			ring_buffer_deinit(handle->j_union.audioTrack.track_rb);
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_player);
 			break;
 		case AUDIO_RECORDER:
 			a_rec_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->j_union.joshvm_media_audiorecorder.rec_rb);
+			ring_buffer_deinit(handle->j_union.audioRecorder.rec_rb);
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_recorder);
 			break;
 		case AUDIO_VAD_REC:			
 			a_vad_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->j_union.joshvm_media_audio_vad_rec.rec_rb);
+			ring_buffer_deinit(handle->j_union.vad.rec_rb);
 			
 			break;
 		default:
@@ -383,9 +383,9 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 					joshvm_esp32_media_stop(handle);						
 					return JOSHVM_FAIL;
 				}		
-				handle->j_union.joshvm_media_mediaplayer.obj_release_flag = OBJ_release_need;
-				handle->j_union.joshvm_media_mediaplayer.callback = callback;
-				if(joshvm_audio_play_handler(handle->j_union.joshvm_media_mediaplayer.url) != ESP_OK){
+				handle->j_union.mediaPlayer.obj_release_flag = OBJ_release_need;
+				handle->j_union.mediaPlayer.callback = callback;
+				if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url) != ESP_OK){
 					return JOSHVM_FAIL;
 				}	
 				ESP_LOGW(TAG,"player,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
@@ -396,34 +396,36 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 					//joshvm_esp32_media_close(handle);
 					return JOSHVM_FAIL;
 				}
-				handle->j_union.joshvm_media_mediarecorder.obj_release_flag = OBJ_release_need;
-				if(audio_pipeline_run(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline) != ESP_OK){
+				handle->j_union.mediaRecorder.obj_release_flag = OBJ_release_need;
+				if(audio_pipeline_run(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK){
 					return JOSHVM_FAIL;
 				}
 				break;
 			case AUDIO_TRACK:
-				handle->j_union.joshvm_media_audiotrack.status = AUDIO_START;
-				handle->j_union.joshvm_media_audiotrack.rb_callback_flag = NO_NEED_CB;				
+				handle->j_union.audioTrack.status = AUDIO_START;
+				handle->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;				
 				if(joshvm_audio_track_init(handle) != JOSHVM_OK){
-					handle->j_union.joshvm_media_audiotrack.status = AUDIO_STOP;					
-					joshvm_esp32_media_close(handle);
+					handle->j_union.audioTrack.status = AUDIO_STOP;					
+					//joshvm_esp32_media_close(handle);
+					joshvm_esp32_media_stop(handle);
 					return JOSHVM_FAIL;
 				}
-				handle->j_union.joshvm_media_audiotrack.obj_release_flag = OBJ_release_need;
+				handle->j_union.audioTrack.obj_release_flag = OBJ_release_need;
 				que_val = QUE_TRACK_START;
 				xQueueSend(que, &que_val, (portTickType)0);
 				xTaskCreate(joshvm_audio_track_task,"joshvm_audio_track_task",2*1024,(void*)handle,JOSHVM_AUDIO_TRACK_TASK_PRI,&audio_track_handler);
 				ESP_LOGI(TAG,"AudioTrack start!");
 				break;
 			case AUDIO_RECORDER:
-				handle->j_union.joshvm_media_audiorecorder.status = AUDIO_START;
-				handle->j_union.joshvm_media_audiorecorder.rb_callback_flag = NO_NEED_CB;				
+				handle->j_union.audioRecorder.status = AUDIO_START;
+				handle->j_union.audioRecorder.rb_callback_flag = NO_NEED_CB;				
 				if(joshvm_audio_recorder_init(handle) != JOSHVM_OK){
-					handle->j_union.joshvm_media_audiorecorder.status = AUDIO_STOP;
-					joshvm_esp32_media_close(handle);
+					handle->j_union.audioRecorder.status = AUDIO_STOP;
+					//joshvm_esp32_media_close(handle);
+					joshvm_esp32_media_stop(handle);
 					return JOSHVM_FAIL;
 				}	
-				handle->j_union.joshvm_media_audiorecorder.obj_release_flag = OBJ_release_need;
+				handle->j_union.audioRecorder.obj_release_flag = OBJ_release_need;
 				xTaskCreate(joshvm_audio_recorder_task, "joshvm_audio_recorder_task", 2 * 1024, (void*)handle, JOSHVM_AUDIO_RECORDER_TASK_PRI, &audio_recorder_handler);
 				ESP_LOGI(TAG,"AudioRecorder start!");
 				break;
@@ -435,14 +437,14 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 		audio_status = JOSHVM_MEDIA_PLAYING;
 		switch(handle->media_type){
 			case MEDIA_PLAYER:			
-				if(joshvm_audio_resume_handler(handle->j_union.joshvm_media_mediaplayer.url) != ESP_OK) return JOSHVM_FAIL;
+				if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;
 				ret = JOSHVM_OK;
 				break;
 			case MEDIA_RECORDER:				
 				ret = JOSHVM_NOT_SUPPORTED;
 				break;
 			case AUDIO_TRACK:				
-				if(audio_pipeline_resume(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
+				if(audio_pipeline_resume(handle->j_union.audioTrack.audiotrack_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
 				ret = JOSHVM_OK;
 				break;
 			case AUDIO_RECORDER:
@@ -474,7 +476,7 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
 		case AUDIO_TRACK:			
-			ret = audio_pipeline_pause(handle->j_union.joshvm_media_audiotrack.audiotrack_t.pipeline);
+			ret = audio_pipeline_pause(handle->j_union.audioTrack.audiotrack_t.pipeline);
 			break;
 		case AUDIO_RECORDER:
 			ret = JOSHVM_NOT_SUPPORTED;
@@ -498,8 +500,8 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 	int ret = JOSHVM_FAIL;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:	
-			if(handle->j_union.joshvm_media_mediaplayer.obj_release_flag == OBJ_release_need){
-				handle->j_union.joshvm_media_mediaplayer.obj_release_flag = OBJ_release_no;
+			if(handle->j_union.mediaPlayer.obj_release_flag == OBJ_release_need){
+				handle->j_union.mediaPlayer.obj_release_flag = OBJ_release_no;
 				if((ret = joshvm_audio_stop_handler(handle)) != ESP_OK){
 					return JOSHVM_FAIL;
 				}	
@@ -509,18 +511,18 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			ret = JOSHVM_OK;			
 			break;
 		case MEDIA_RECORDER:
-			if(handle->j_union.joshvm_media_mediarecorder.obj_release_flag == OBJ_release_need){
-				handle->j_union.joshvm_media_mediarecorder.obj_release_flag = OBJ_release_no;
-				if(audio_pipeline_terminate(handle->j_union.joshvm_media_mediarecorder.recorder_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
+			if(handle->j_union.mediaRecorder.obj_release_flag == OBJ_release_need){
+				handle->j_union.mediaRecorder.obj_release_flag = OBJ_release_no;
+				if(audio_pipeline_terminate(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
 				joshvm_media_recorder_release(handle);
 				ESP_LOGI(TAG,"MediaRecorder stop!");
 			}
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:	
-			if(handle->j_union.joshvm_media_audiotrack.obj_release_flag == OBJ_release_need){
-				handle->j_union.joshvm_media_audiotrack.obj_release_flag = OBJ_release_no;
-				handle->j_union.joshvm_media_audiotrack.status = AUDIO_STOP;
+			if(handle->j_union.audioTrack.obj_release_flag == OBJ_release_need){
+				handle->j_union.audioTrack.obj_release_flag = OBJ_release_no;
+				handle->j_union.audioTrack.status = AUDIO_STOP;
 				que_val = QUE_TRACK_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);			
 				ESP_LOGI(TAG,"AudioTrack stop!");
@@ -528,12 +530,12 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
-			if(handle->j_union.joshvm_media_audiorecorder.obj_release_flag == OBJ_release_need){
-				handle->j_union.joshvm_media_audiorecorder.obj_release_flag = OBJ_release_no;
-				handle->j_union.joshvm_media_audiorecorder.status = AUDIO_STOP;
+			if(handle->j_union.audioRecorder.obj_release_flag == OBJ_release_need){
+				handle->j_union.audioRecorder.obj_release_flag = OBJ_release_no;
+				handle->j_union.audioRecorder.status = AUDIO_STOP;
 				que_val = QUE_RECORD_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);
-				if(audio_pipeline_terminate(handle->j_union.joshvm_media_audiorecorder.audiorecorder_t.pipeline) != ESP_OK)	return JOSHVM_FAIL;
+				if(audio_pipeline_terminate(handle->j_union.audioRecorder.audiorecorder_t.pipeline) != ESP_OK)	return JOSHVM_FAIL;
 				joshvm_audio_rcorder_release(handle);
 				ESP_LOGI(TAG,"AudioRedorder stop!");
 			}			
@@ -561,11 +563,11 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle)
 			ret = JOSHVM_OK;
 			break;
 		case MEDIA_RECORDER:
-			handle->j_union.joshvm_media_mediarecorder.format = j_meida_rec_default_cfg.format;
-			handle->j_union.joshvm_media_mediarecorder.url = j_meida_rec_default_cfg.url;
-			handle->j_union.joshvm_media_mediarecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
-			handle->j_union.joshvm_media_mediarecorder.channel = j_meida_rec_default_cfg.channel;
-			handle->j_union.joshvm_media_mediarecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
+			handle->j_union.mediaRecorder.format = j_meida_rec_default_cfg.format;
+			handle->j_union.mediaRecorder.url = j_meida_rec_default_cfg.url;
+			handle->j_union.mediaRecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
+			handle->j_union.mediaRecorder.channel = j_meida_rec_default_cfg.channel;
+			handle->j_union.mediaRecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -634,23 +636,23 @@ int joshvm_esp32_media_read(joshvm_media_t* handle, unsigned char* buffer, int s
 	int ret = JOSHVM_OK;
 	switch(handle->media_type){
 		case AUDIO_RECORDER:
-			handle->j_union.joshvm_media_audiorecorder.rb_callback = callback;
-			ret = joshvm_audio_recorder_read(handle->j_union.joshvm_media_audiorecorder.status,\
-											 handle->j_union.joshvm_media_audiorecorder.rec_rb,buffer,size,bytesRead);
+			handle->j_union.audioRecorder.rb_callback = callback;
+			ret = joshvm_audio_recorder_read(handle->j_union.audioRecorder.status,\
+											 handle->j_union.audioRecorder.rec_rb,buffer,size,bytesRead);
 			if(ret == JOSHVM_NOTIFY_LATER){	
-				handle->j_union.joshvm_media_audiorecorder.rb_callback_flag = NEED_CB;
+				handle->j_union.audioRecorder.rb_callback_flag = NEED_CB;
 			}
 			break;
 		case AUDIO_VAD_REC:
-			if(handle->j_union.joshvm_media_audio_vad_rec.rec_rb == NULL){//
+			if(handle->j_union.vad.rec_rb == NULL){//
 				*bytesRead = 0;
 				ret = JOSHVM_OK;				
 			}		
-			handle->j_union.joshvm_media_audio_vad_rec.rb_callback = callback;
-			ret = joshvm_audio_recorder_read(handle->j_union.joshvm_media_audio_vad_rec.status,\
-											 handle->j_union.joshvm_media_audio_vad_rec.rec_rb,buffer,size,bytesRead);
+			handle->j_union.vad.rb_callback = callback;
+			ret = joshvm_audio_recorder_read(handle->j_union.vad.status,\
+											 handle->j_union.vad.rec_rb,buffer,size,bytesRead);
 			if(ret == JOSHVM_NOTIFY_LATER){
-				handle->j_union.joshvm_media_audio_vad_rec.rb_callback_flag = NEED_CB;
+				handle->j_union.vad.rb_callback_flag = NEED_CB;
 			}
 			break;			
 		default:
@@ -667,10 +669,10 @@ int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int 
 		return JOSHVM_FAIL;
 	}
 
-	handle->j_union.joshvm_media_audiotrack.rb_callback = callback;
-	uint8_t ret = joshvm_audio_track_write(handle->j_union.joshvm_media_audiotrack.status,handle->j_union.joshvm_media_audiotrack.track_rb,buffer,size,bytesWritten);
+	handle->j_union.audioTrack.rb_callback = callback;
+	uint8_t ret = joshvm_audio_track_write(handle->j_union.audioTrack.status,handle->j_union.audioTrack.track_rb,buffer,size,bytesWritten);
 	if(ret == JOSHVM_NOTIFY_LATER){
-		handle->j_union.joshvm_media_audiotrack.rb_callback_flag = NEED_CB;
+		handle->j_union.audioTrack.rb_callback_flag = NEED_CB;
 	}
 	return ret;
 }
@@ -682,7 +684,7 @@ int joshvm_esp32_media_flush(joshvm_media_t* handle)
 		return JOSHVM_FAIL;
 	}
 
-	ring_buffer_flush(handle->j_union.joshvm_media_audiotrack.track_rb);
+	ring_buffer_flush(handle->j_union.audioTrack.track_rb);
 	return 0;
 }
 
@@ -726,15 +728,15 @@ int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t va
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
 		case MEDIA_RECORDER:
-			handle->j_union.joshvm_media_mediarecorder.sample_rate = value;
+			handle->j_union.mediaRecorder.sample_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
-			handle->j_union.joshvm_media_audiotrack.sample_rate = value;
+			handle->j_union.audioTrack.sample_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
-			handle->j_union.joshvm_media_audiorecorder.sample_rate = value;
+			handle->j_union.audioRecorder.sample_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -762,15 +764,15 @@ int joshvm_esp32_media_set_channel_config(joshvm_media_t* handle, uint8_t value)
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
 		case MEDIA_RECORDER:
-			handle->j_union.joshvm_media_mediarecorder.channel = value;
+			handle->j_union.mediaRecorder.channel = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
-			handle->j_union.joshvm_media_audiotrack.channel = value;
+			handle->j_union.audioTrack.channel = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
-			handle->j_union.joshvm_media_audiorecorder.channel = value;
+			handle->j_union.audioRecorder.channel = value;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -797,15 +799,15 @@ int joshvm_esp32_media_set_audio_bit_rate(joshvm_media_t* handle, uint8_t value)
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
 		case MEDIA_RECORDER:
-			handle->j_union.joshvm_media_mediarecorder.bit_rate = value;
+			handle->j_union.mediaRecorder.bit_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
-			handle->j_union.joshvm_media_audiotrack.bit_rate = value;
+			handle->j_union.audioTrack.bit_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
-			handle->j_union.joshvm_media_audiorecorder.bit_rate = value;
+			handle->j_union.audioRecorder.bit_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -832,16 +834,16 @@ int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source)
 			//spiffs
 			if(strstr(source,spiffs_file) != NULL){
 				sprintf(url_source,"spiffs:/%s",source);	
-				handle->j_union.joshvm_media_mediaplayer.url = url_source;
+				handle->j_union.mediaPlayer.url = url_source;
 				ESP_LOGI(TAG,"Set MediaPlayer spiffs Source:%s",url_source);
 			}//fatfs
 			else if(strstr(source,fatfs_file) != NULL){
 				sprintf(url_source,"file:/%s",source);
-				handle->j_union.joshvm_media_mediaplayer.url = url_source;
+				handle->j_union.mediaPlayer.url = url_source;
 				ESP_LOGI(TAG,"Set MediaPlayer farfs Source:%s",url_source);
 			}//http_url
 			else{
-				handle->j_union.joshvm_media_mediaplayer.url = source;
+				handle->j_union.mediaPlayer.url = source;
 				ESP_LOGI(TAG,"Set MediaPlayer http Source:%s",source);
 			}			
 			ret = JOSHVM_OK;
@@ -864,7 +866,7 @@ int joshvm_esp32_media_set_output_file(joshvm_media_t* handle, char* file)
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_RECORDER:
-			handle->j_union.joshvm_media_mediarecorder.url = file;
+			handle->j_union.mediaRecorder.url = file;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -884,7 +886,7 @@ int joshvm_esp32_media_set_output_format(joshvm_media_t* handle, int format)
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_RECORDER:
-			handle->j_union.joshvm_media_mediarecorder.format = format;
+			handle->j_union.mediaRecorder.format = format;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -925,7 +927,7 @@ int joshvm_esp32_media_set_position(joshvm_media_t* handle, int pos, void(*callb
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
-			//handle->j_union.joshvm_media_mediaplayer.positon = pos;
+			//handle->j_union.mediaPlayer.positon = pos;
 			ret = JOSHVM_FAIL;
 			break;
 		default :
@@ -946,7 +948,7 @@ int joshvm_esp32_media_get_duration(joshvm_media_t* handle, int* duration)
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
-			//*duration = handle->j_union.joshvm_media_mediaplayer.duration;
+			//*duration = handle->j_union.mediaPlayer.duration;
 			ret = JOSHVM_FAIL;
 			break;
 		default :

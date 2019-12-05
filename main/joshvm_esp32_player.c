@@ -90,7 +90,7 @@ static void esp_audio_state_task (void *para)
 				errcode = JOSHVM_OK;	
 			}
 			joshvm_esp32_media_callback(handle,errcode);
-			xEventGroupSetBits(handle->j_union.joshvm_media_mediaplayer.evt_group_stop, J_STOP_BIT_0);
+			xEventGroupSetBits(handle->j_union.mediaPlayer.evt_group_stop, J_STOP_BIT_0);
 //			if((uxBits & J_STOP_BIT_0) != 0){
 //				printf("J_STOP_BIT_0 not clear\n");
 //			}else{
@@ -260,7 +260,7 @@ audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle)
 	ret =  esp_audio_stop(player, TERMINATION_TYPE_NOW);
 	esp_audio_state_get(player,&state);
 	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
-		xEventGroupWaitBits(handle->j_union.joshvm_media_mediaplayer.evt_group_stop, 
+		xEventGroupWaitBits(handle->j_union.mediaPlayer.evt_group_stop, 
                                      J_STOP_BIT_0,            
                                      pdTRUE,             
                                      pdTRUE,             
