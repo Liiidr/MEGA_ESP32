@@ -202,6 +202,10 @@ joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 int joshvm_audio_play_handler(const char *url)
 {
 	int ret = JOSHVM_FAIL;
+	if(url == NULL){
+		ESP_LOGE(TAG,"The playing url is illegal!");
+		return ret;
+	}
 	esp_audio_state_t state;
 	esp_audio_state_get(player,&state);
 	printf("1 player state %d\n",state.status);
