@@ -445,7 +445,7 @@ void joshvm_audio_track_task(void* handle)
 				if(que != NULL){	
 					xQueueReceive(que, &que_val, 0);
 				}else{
-					ESP_LOGE(TAG,"Are you close track without stop track before?");
+					ESP_LOGW(TAG,"Are you close track without stop track before?");
 					task_run = 0;
 					break;
 				}
@@ -535,7 +535,7 @@ void joshvm_audio_recorder_task(void* handle)
 		if(que != NULL){
 			xQueueReceive(que, &que_val, (portTickType)0);
 		}else{
-			ESP_LOGE(TAG,"Are you close recorder without stop recorder before?");
+			ESP_LOGW(TAG,"Are you close recorder without stop recorder before?");
 			break;
 		}
 		if(que_val == QUE_RECORD_STOP){

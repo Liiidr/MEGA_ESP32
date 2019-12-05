@@ -12,8 +12,6 @@
 #define OBJ_CREATED_NOT	2
 
 
-
-
 //---enum
 typedef enum{
 	JOSHVM_OK 				= 0,
@@ -42,11 +40,14 @@ enum{
 	NEED_CB,
 }joshvm_audio_rb_callback_status_e;
 
-
-//---
+enum{
+	OBJ_release_need = 0,
+	OBJ_release_no
+}joshvm_media_release_e;
+	
+//---struct
 typedef struct{
 	char *url;						//dataSource
-	//mediaplayer_callback callback;
 	void(*callback)(void*, int);
 	uint32_t sample_rate;
 	uint8_t channel;
@@ -54,6 +55,7 @@ typedef struct{
 	int positon;
 	int duration;	
 	EventGroupHandle_t evt_group_stop;//for player stop
+	int obj_release_flag;
 }joshvm_media_mediaplayer_t;
 
 typedef struct{
@@ -62,7 +64,6 @@ typedef struct{
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
-	//recorder_pipeline;
 	struct{
 		void* i2s;
 		void* filter;
@@ -70,6 +71,7 @@ typedef struct{
 		void* stream_writer;
 		void* pipeline;
 	}recorder_t;
+	int obj_release_flag;
 }joshvm_media_mediarecorder_t;
 
 typedef struct{
@@ -79,7 +81,6 @@ typedef struct{
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
-	//raw_pipeline
 	struct{
 		void* i2s;
 		void* filter;
@@ -89,6 +90,7 @@ typedef struct{
 
 	ring_buffer_t *track_rb;
 	void(*callback)(void*, int);
+	int obj_release_flag;
 }joshvm_media_audiotrack_t;
 
 typedef struct{
@@ -98,7 +100,6 @@ typedef struct{
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
-	//raw_pipeline
 	struct{
 		void* i2s;
 		void* filter;
@@ -107,6 +108,7 @@ typedef struct{
 	}audiorecorder_t;
 
 	ring_buffer_t *rec_rb;
+	int obj_release_flag;
 }joshvm_media_audiorecorder_t;
 
 typedef struct{

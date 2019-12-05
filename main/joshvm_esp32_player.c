@@ -179,6 +179,7 @@ void joshvm_audio_player_destroy()
 {
 	if(player != NULL){
 		if(esp_audio_destroy(player) == ESP_ERR_AUDIO_NO_ERROR){
+			printf("player add :%p",player);
 			player = NULL;
 			josh_i2s_stream_writer = NULL;
 		}
@@ -201,11 +202,12 @@ joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 
 int joshvm_audio_play_handler(const char *url)
 {
-	int ret = JOSHVM_FAIL;
+	if(player == NULL)return JOSHVM_FAIL;	
 	if(url == NULL){
 		ESP_LOGE(TAG,"The playing url is illegal!");
-		return ret;
+		return JOSHVM_FAIL;
 	}
+	int ret = JOSHVM_FAIL;
 	esp_audio_state_t state;
 	esp_audio_state_get(player,&state);
 	printf("1 player state %d\n",state.status);
@@ -223,6 +225,7 @@ int joshvm_audio_play_handler(const char *url)
 
 audio_err_t joshvm_audio_pause(void)
 {
+	if(player == NULL)return ESP_FAIL;
 	int ret;
 	ESP_LOGI(TAG, "Pause audio play");
 	esp_audio_pos_get(player, &audio_pos);
@@ -234,6 +237,7 @@ audio_err_t joshvm_audio_pause(void)
 
 audio_err_t joshvm_audio_resume_handler(const char *url)
 {
+	if(player == NULL)return ESP_FAIL;
 	int ret;
     ESP_LOGI(TAG,"Resume pos :%d",audio_pos);
 	if((ret = esp_audio_resume(player)) == ESP_OK){
@@ -244,6 +248,10 @@ audio_err_t joshvm_audio_resume_handler(const char *url)
 
 audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle)
 {
+	if(player == NULL){
+		ESP_LOGW(TAG,"Player is null when you stop it");
+		return ESP_OK;
+	}
     ESP_LOGI(TAG, "Stop audio play");
 	int ret;
 	//EventBits_t uxBits;
@@ -280,6 +288,7 @@ int joshvm_audio_get_state()
 audio_err_t joshvm_audio_time_get(int *time)
 {	
 	int ret;
+	if(player == NULL)return ESP_FAIL;
 	ret = esp_audio_time_get(player,time);
 	ESP_LOGI(TAG,"get time position currently:%d",*time);
 	return ret;

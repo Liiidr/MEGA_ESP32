@@ -96,6 +96,8 @@ void joshvm_app_init(void)
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 
 	while (1) {		
+		//extern void player_test();
+		//player_test();
 		//extern void fun_test();
 		//fun_test();		
 		//extern void test_esp32_media(void);
