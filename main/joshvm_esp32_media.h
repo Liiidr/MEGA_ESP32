@@ -127,7 +127,7 @@ typedef struct {
 		joshvm_media_audiotrack_t joshvm_media_audiotrack;
 		joshvm_media_audiorecorder_t joshvm_media_audiorecorder;
 		joshvm_media_audio_vad_rec_t joshvm_media_audio_vad_rec;
-	}joshvm_media_u;
+	}j_union;
 	
 }joshvm_media_t;
 

@@ -147,9 +147,9 @@ void test_esp32_media(void)
 {
 
 //---wakeup test
-	joshvm_esp32_wakeup_enable(media_player_callback_test);
+	//joshvm_esp32_wakeup_enable(media_player_callback_test);
 
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
+	//vTaskDelay(20000 / portTICK_PERIOD_MS); 
 
 	
 	//joshvm_esp32_wakeup_enable(media_player_callback_test);
@@ -161,8 +161,8 @@ void test_esp32_media(void)
 
 	//joshvm_esp32_media_create(0,&handle_media_player_test);
 	//joshvm_esp32_media_create(1,&handle_media_rec_test);
-	//joshvm_esp32_media_create(2,&handle_track_test);
-	//joshvm_esp32_media_create(3,&handle_recorder_test);
+	joshvm_esp32_media_create(2,&handle_track_test);
+	joshvm_esp32_media_create(3,&handle_recorder_test);
 	//joshvm_esp32_vad_start(test_vad_callback);
 
 
@@ -182,9 +182,9 @@ void test_esp32_media(void)
 */
 
 	//audio_track  audio_recorder
-/*
+
 	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
+	vTaskDelay(10000 / portTICK_PERIOD_MS); 
 	joshvm_esp32_media_stop(handle_recorder_test);
 
 	//joshvm_esp32_vad_stop();
@@ -194,16 +194,16 @@ void test_esp32_media(void)
 	//joshvm_esp32_vad_stop();
 
 
-	((joshvm_media_t*)handle_track_test)->joshvm_media_u.joshvm_media_audiotrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->joshvm_media_u.joshvm_media_audiorecorder.rec_rb;
+	((joshvm_media_t*)handle_track_test)->j_union.joshvm_media_audiotrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->j_union.joshvm_media_audiorecorder.rec_rb;
 
 
 	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
 
-	vTaskDelay(20000 / portTICK_PERIOD_MS); 
-	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->joshvm_media_u.joshvm_media_audiotrack.audiotrack_t.i2s));
+	vTaskDelay(10000 / portTICK_PERIOD_MS); 
+	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->j_union.joshvm_media_audiotrack.audiotrack_t.i2s));
 	joshvm_esp32_media_stop(handle_track_test);
 
-*/
+
 
 /*
  

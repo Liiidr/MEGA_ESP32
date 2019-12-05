@@ -90,7 +90,7 @@ static void esp_audio_state_task (void *para)
 				errcode = JOSHVM_OK;	
 			}
 			joshvm_esp32_media_callback(handle,errcode);
-			xEventGroupSetBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, J_STOP_BIT_0);
+			xEventGroupSetBits(handle->j_union.joshvm_media_mediaplayer.evt_group_stop, J_STOP_BIT_0);
 //			if((uxBits & J_STOP_BIT_0) != 0){
 //				printf("J_STOP_BIT_0 not clear\n");
 //			}else{
@@ -177,9 +177,11 @@ static void setup_player(joshvm_media_t* handle)
 
 void joshvm_audio_player_destroy()
 {
-	if(esp_audio_destroy(player) == ESP_ERR_AUDIO_NO_ERROR){
-		player = NULL;
-		josh_i2s_stream_writer = NULL;
+	if(player != NULL){
+		if(esp_audio_destroy(player) == ESP_ERR_AUDIO_NO_ERROR){
+			player = NULL;
+			josh_i2s_stream_writer = NULL;
+		}
 	}
 	if(esp_audio_state_task_handler != NULL){
 		vTaskDelete(esp_audio_state_task_handler);
@@ -202,10 +204,12 @@ int joshvm_audio_play_handler(const char *url)
 	int ret = JOSHVM_FAIL;
 	esp_audio_state_t state;
 	esp_audio_state_get(player,&state);
+	printf("1 player state %d\n",state.status);
 	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
 		ESP_LOGW(TAG,"player is playing,status :%d",state.status);
 		ret = JOSHVM_FAIL;
 	}else{
+		printf("2 player state %d\n",state.status);
 		ESP_LOGI(TAG, "Playing : %s", url);
 		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
 		printf("esp_audio_play ret %d\n",ret);
@@ -244,7 +248,7 @@ audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle)
 	ret =  esp_audio_stop(player, TERMINATION_TYPE_NOW);
 	esp_audio_state_get(player,&state);
 	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
-		xEventGroupWaitBits(handle->joshvm_media_u.joshvm_media_mediaplayer.evt_group_stop, 
+		xEventGroupWaitBits(handle->j_union.joshvm_media_mediaplayer.evt_group_stop, 
                                      J_STOP_BIT_0,            
                                      pdTRUE,             
                                      pdTRUE,             
