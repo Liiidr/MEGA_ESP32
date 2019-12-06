@@ -146,6 +146,28 @@ void player_test()
 
 }
 
+
+void test_media_recorder(void)
+{
+	joshvm_esp32_media_create(1,&handle_media_rec_test);
+
+//RECORDER
+	joshvm_esp32_media_set_output_file(handle_media_rec_test,"/sdcard/default.wav");
+	joshvm_esp32_media_set_output_format(handle_media_rec_test,2);
+
+	joshvm_esp32_media_prepare(handle_media_rec_test,NULL);
+/*	joshvm_esp32_media_start(handle_media_rec_test,media_player_callback_test);
+
+	vTaskDelay(10000 / portTICK_PERIOD_MS);
+	joshvm_esp32_media_stop(handle_media_rec_test);
+	vTaskDelay(3000 / portTICK_PERIOD_MS); 
+
+	joshvm_esp32_media_close(handle_media_rec_test);
+*/
+}
+
+
+
 void test_esp32_media(void)
 {
 
