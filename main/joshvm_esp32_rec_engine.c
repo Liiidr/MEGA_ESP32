@@ -96,6 +96,7 @@ extern uint8_t wakeup_obj_created_status;
 extern audio_element_handle_t josh_i2s_stream_reader;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 extern SemaphoreHandle_t s_mutex_recorder;
+joshvm_err_t joshvm_esp32_i2s_create(void);
 
 uint32_t vad_off_time = 0;
 //---fun
@@ -161,6 +162,8 @@ static void rec_engine_task(void *handle)
 	audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
 	pipeline = audio_pipeline_init(&pipeline_cfg);
 	mem_assert(pipeline);
+
+	joshvm_esp32_i2s_create();
 
 	rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
 	rsp_cfg.src_rate = 48000;
@@ -250,7 +253,9 @@ static void rec_engine_task(void *handle)
 	/* Release all resources */
 	audio_pipeline_deinit(pipeline);
 	audio_element_deinit(raw_read);
-	//audio_element_deinit(i2s_stream_reader);
+	if(audio_element_deinit(josh_i2s_stream_reader) == ESP_OK){
+		josh_i2s_stream_reader = NULL;
+	}
 	audio_element_deinit(filter);
 
 	model->destroy(iface);
@@ -267,6 +272,7 @@ static void rec_engine_task(void *handle)
 	}else{
 		joshvm_rec_engine_destroy(rec_engine, WAKEUP_DISABLE);
 	}
+	josh_i2s_stream_reader = NULL;
 	vTaskDelete(NULL);
 }
 
