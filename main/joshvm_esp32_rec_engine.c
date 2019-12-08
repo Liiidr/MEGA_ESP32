@@ -157,13 +157,21 @@ static void rec_engine_task(void *handle)
 	}
 
 	audio_pipeline_handle_t pipeline;
-	audio_element_handle_t filter, raw_read;
+	audio_element_handle_t filter, raw_read,i2s_stream_reader;
 
 	audio_pipeline_cfg_t pipeline_cfg = DEFAULT_AUDIO_PIPELINE_CONFIG();
 	pipeline = audio_pipeline_init(&pipeline_cfg);
 	mem_assert(pipeline);
 
-	joshvm_esp32_i2s_create();
+	//joshvm_esp32_i2s_create();	
+	i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
+	i2s_cfg.i2s_config.sample_rate = 48000;
+	i2s_cfg.type = AUDIO_STREAM_READER;
+#if defined CONFIG_ESP_LYRAT_MINI_V1_1_BOARD
+	i2s_cfg.i2s_port = 1;
+#endif
+	i2s_cfg.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
+	i2s_stream_reader = i2s_stream_init(&i2s_cfg);
 
 	rsp_filter_cfg_t rsp_cfg = DEFAULT_RESAMPLE_FILTER_CONFIG();
 	rsp_cfg.src_rate = 48000;
@@ -179,7 +187,7 @@ static void rec_engine_task(void *handle)
 	};
 	raw_read = raw_stream_init(&raw_cfg);	
 
-	audio_pipeline_register(pipeline, josh_i2s_stream_reader, "i2s_rec_engine");
+	audio_pipeline_register(pipeline, i2s_stream_reader, "i2s_rec_engine");
 	audio_pipeline_register(pipeline, filter, "filter_rec_engine");
 	audio_pipeline_register(pipeline, raw_read, "raw_rec_engine");
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
@@ -247,14 +255,14 @@ static void rec_engine_task(void *handle)
 	audio_pipeline_terminate(pipeline);	
 	/* Terminate the pipeline before removing the listener */
 	audio_pipeline_unregister(pipeline, raw_read);
-	audio_pipeline_unregister(pipeline, josh_i2s_stream_reader);
+	audio_pipeline_unregister(pipeline, i2s_stream_reader);
 	audio_pipeline_unregister(pipeline, filter);	
 
 	/* Release all resources */
 	audio_pipeline_deinit(pipeline);
 	audio_element_deinit(raw_read);
-	if(audio_element_deinit(josh_i2s_stream_reader) == ESP_OK){
-		josh_i2s_stream_reader = NULL;
+	if(audio_element_deinit(i2s_stream_reader) == ESP_OK){
+		i2s_stream_reader = NULL;
 	}
 	audio_element_deinit(filter);
 
@@ -272,7 +280,7 @@ static void rec_engine_task(void *handle)
 	}else{
 		joshvm_rec_engine_destroy(rec_engine, WAKEUP_DISABLE);
 	}
-	josh_i2s_stream_reader = NULL;
+	//josh_i2s_stream_reader = NULL;
 	vTaskDelete(NULL);
 }
 

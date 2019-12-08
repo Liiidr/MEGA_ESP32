@@ -108,8 +108,8 @@ void fun_test()
 	vTaskDelay(5000);
 	//joshvm_esp32_media_stop(handle_media_player);
 
-	extern joshvm_err_t joshvm_esp32_i2s_deinit(void);
-	joshvm_esp32_i2s_deinit();
+	//extern joshvm_err_t joshvm_esp32_i2s_deinit(void);
+	//joshvm_esp32_i2s_deinit();
 
 	
 	while(1){
@@ -146,28 +146,6 @@ void player_test()
 
 }
 
-
-void test_media_recorder(void)
-{
-	joshvm_esp32_media_create(1,&handle_media_rec_test);
-
-//RECORDER
-	joshvm_esp32_media_set_output_file(handle_media_rec_test,"/sdcard/default.wav");
-	joshvm_esp32_media_set_output_format(handle_media_rec_test,2);
-
-	joshvm_esp32_media_prepare(handle_media_rec_test,NULL);
-/*	joshvm_esp32_media_start(handle_media_rec_test,media_player_callback_test);
-
-	vTaskDelay(10000 / portTICK_PERIOD_MS);
-	joshvm_esp32_media_stop(handle_media_rec_test);
-	vTaskDelay(3000 / portTICK_PERIOD_MS); 
-
-	joshvm_esp32_media_close(handle_media_rec_test);
-*/
-}
-
-
-
 void test_esp32_media(void)
 {
 
@@ -191,26 +169,11 @@ void test_esp32_media(void)
 	//joshvm_esp32_vad_start(test_vad_callback);
 
 
-
-/*//RECORDER
-	joshvm_esp32_media_set_output_file(handle_media_rec_test,"/sdcard/default55.wav");
-	joshvm_esp32_media_set_audio_sample_rate(handle_media_rec_test,16000);
-	joshvm_esp32_media_set_channel_config(handle_media_rec_test,1);
-	joshvm_esp32_media_prepare(handle_media_rec_test,NULL);
-	joshvm_esp32_media_start(handle_media_rec_test,media_player_callback_test);
-
-	vTaskDelay(10000 / portTICK_PERIOD_MS);
-	joshvm_esp32_media_stop(handle_media_rec_test);
-	vTaskDelay(3000 / portTICK_PERIOD_MS); 
-
-	joshvm_esp32_media_close(handle_media_rec_test);
-*/
-
 	//audio_track  audio_recorder
 
 	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
-	//vTaskDelay(10000 / portTICK_PERIOD_MS); 
-	//joshvm_esp32_media_stop(handle_recorder_test);
+	vTaskDelay(10000 / portTICK_PERIOD_MS); 
+	joshvm_esp32_media_stop(handle_recorder_test);
 
 	//joshvm_esp32_vad_stop();
 

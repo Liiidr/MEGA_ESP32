@@ -64,6 +64,8 @@ extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 extern SemaphoreHandle_t s_mutex_recorder;
 extern SemaphoreHandle_t s_mutex_player;
 //extern EventGroupHandle_t j_EventGroup_player;
+extern audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type);
+
 
 void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
@@ -77,9 +79,12 @@ joshvm_err_t joshvm_mep32_board_init()
 {
 	if(xSemaphoreTake( xSemaphore_MegaBoard_init, ( TickType_t ) 0 ) == pdTRUE){		
 		ESP_LOGI(TAG,"Init I2s");
-		if(joshvm_esp32_i2s_create() == JOSHVM_FAIL){
-			return JOSHVM_FAIL;
-		}
+		audio_element_handle_t josh_i2s_stream_reader = create_i2s_stream(48000,16,1,AUDIO_STREAM_READER);
+		audio_element_handle_t josh_i2s_stream_writer = create_i2s_stream(48000,16,1,AUDIO_STREAM_WRITER);
+		
+//		if(joshvm_esp32_i2s_create() == JOSHVM_FAIL){
+//			return JOSHVM_FAIL;
+//		}
 		ESP_LOGI(TAG,"Init Board");
 		MegaBoard_handle = audio_board_init();
 		if((MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
@@ -92,11 +97,15 @@ joshvm_err_t joshvm_mep32_board_init()
 		}
 		audio_hal_set_volume(MegaBoard_handle->audio_hal,61);
 
+		audio_element_deinit(josh_i2s_stream_reader);
+		audio_element_deinit(josh_i2s_stream_writer);
 		return JOSHVM_OK;
 		err:
 			ESP_LOGE(TAG,"Init Board Failed!");
+			audio_element_deinit(josh_i2s_stream_reader);
+			audio_element_deinit(josh_i2s_stream_writer);
 			xSemaphoreGive( xSemaphore_MegaBoard_init );
-			joshvm_esp32_i2s_deinit();
+			//joshvm_esp32_i2s_deinit();
 			if(MegaBoard_handle->audio_hal != NULL){
 				audio_hal_deinit(MegaBoard_handle->audio_hal);	
 				MegaBoard_handle->audio_hal = NULL;
@@ -125,7 +134,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.49>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4901>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -341,7 +350,7 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			MegaBoard_handle = NULL;
 		}		
 		xSemaphoreGive( xSemaphore_MegaBoard_init );
-		joshvm_esp32_i2s_deinit();
+		//joshvm_esp32_i2s_deinit();
 	}
 	return JOSHVM_OK;
 }

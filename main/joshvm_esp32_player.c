@@ -60,7 +60,7 @@ static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
 //EventGroupHandle_t j_EventGroup_player = NULL; 
 extern audio_board_handle_t MegaBoard_handle;
-extern audio_element_handle_t josh_i2s_stream_writer;
+//extern audio_element_handle_t josh_i2s_stream_writer;
 
 //---struct
 typedef struct{
@@ -147,8 +147,13 @@ static void setup_player(joshvm_media_t* handle)
     esp_audio_input_stream_add(player, http_stream_init(&http_cfg));
 
     //add to esp_audio
-    joshvm_esp32_i2s_create();
-	esp_audio_output_stream_add(player,josh_i2s_stream_writer);
+    //joshvm_esp32_i2s_create();
+	//esp_audio_output_stream_add(player,josh_i2s_stream_writer);
+    i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
+    i2s_writer.i2s_config.sample_rate = 48000;
+    i2s_writer.type = AUDIO_STREAM_WRITER;
+	i2s_writer.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
+    esp_audio_output_stream_add(player, i2s_stream_init(&i2s_writer));	
 
     // Add decoders and encoders to esp_audio
     wav_decoder_cfg_t wav_dec_cfg = DEFAULT_WAV_DECODER_CONFIG();
@@ -181,7 +186,7 @@ void joshvm_audio_player_destroy()
 		if(esp_audio_destroy(player) == ESP_ERR_AUDIO_NO_ERROR){
 			printf("player add :%p",player);
 			player = NULL;
-			josh_i2s_stream_writer = NULL;
+			//josh_i2s_stream_writer = NULL;
 		}
 	}
 	if(esp_audio_state_task_handler != NULL){
