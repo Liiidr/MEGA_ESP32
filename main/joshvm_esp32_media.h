@@ -5,14 +5,21 @@
 #include "freertos/event_groups.h"
 
 //---define
-#define QUE_TRACK_START 1
-#define QUE_TRACK_STOP 2
-#define QUE_RECORD_STOP 3
+//#define QUE_TRACK_START 1
+//#define QUE_TRACK_STOP 2
+//#define QUE_RECORD_STOP 3
 #define OBJ_CREATED	1
 #define OBJ_CREATED_NOT	2
 
 
 //---enum
+typedef enum{
+	QUE_TRACK_PAUSE = 0,
+	QUE_TRACK_START,
+	QUE_TRACK_STOP,
+	QUE_RECORD_STOP
+}joshvm_evt_que_t;
+
 typedef enum{
 	JOSHVM_OK 				= 0,
 	JOSHVM_FAIL 			= -1,
@@ -49,6 +56,7 @@ enum{
 	
 //---struct
 typedef struct{
+	int8_t status;
 	char *url;						//dataSource
 	void(*callback)(void*, int);
 	uint32_t sample_rate;

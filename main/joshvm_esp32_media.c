@@ -413,69 +413,71 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 	QueueHandle_t que = handle->evt_que;
 	uint16_t que_val = 0;
 	int ret = JOSHVM_OK;
-	if(audio_status != JOSHVM_MEDIA_PAUSED){//start		
 		switch(handle->media_type){
 			case MEDIA_PLAYER:	
-				handle->j_union.mediaPlayer.callback = callback;
-				if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url) != ESP_OK){
-					return JOSHVM_FAIL;
-				}	
-				ESP_LOGW(TAG,"player,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-				break;
+				//play
+				if((handle->j_union.mediaPlayer.status == AUDIO_UNKNOW) || (handle->j_union.mediaPlayer.status == AUDIO_STOP)){
+					handle->j_union.mediaPlayer.callback = callback;
+					if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url) != ESP_OK){
+						return JOSHVM_FAIL;
+					}	
+					ESP_LOGW(TAG,"player,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+					break;
+				}
+				//pause->play
+				else if(handle->j_union.mediaPlayer.status == AUDIO_PAUSE){				
+					if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;		
+					ret = JOSHVM_OK;
+					break;
+				}
 			case MEDIA_RECORDER:
 				if(audio_pipeline_run(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK){
 					return JOSHVM_FAIL;
 				}
 				break;
 			case AUDIO_TRACK:
-				handle->j_union.audioTrack.status = AUDIO_START;
-				handle->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;				
-				if(joshvm_audio_track_init(handle) != JOSHVM_OK){
-					handle->j_union.audioTrack.status = AUDIO_STOP;					
-					//joshvm_esp32_media_close(handle);
-					joshvm_esp32_media_stop(handle);
-					return JOSHVM_FAIL;
+				//play
+				if((handle->j_union.audioTrack.status == AUDIO_UNKNOW) || (handle->j_union.audioTrack.status == AUDIO_STOP)){
+					handle->j_union.audioTrack.status = AUDIO_START;
+					handle->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;				
+					if(joshvm_audio_track_init(handle) != JOSHVM_OK){
+						handle->j_union.audioTrack.status = AUDIO_STOP;					
+						//joshvm_esp32_media_close(handle);
+						joshvm_esp32_media_stop(handle);
+						return JOSHVM_FAIL;
+					}
+					handle->j_union.audioTrack.obj_release_flag = OBJ_release_need;
+					que_val = QUE_TRACK_START;
+					xQueueSend(que, &que_val, (portTickType)0);
+					xTaskCreate(joshvm_audio_track_task,"joshvm_audio_track_task",2*1024,(void*)handle,JOSHVM_AUDIO_TRACK_TASK_PRI,&audio_track_handler);
+					ESP_LOGI(TAG,"AudioTrack start!");
+					break;
 				}
-				handle->j_union.audioTrack.obj_release_flag = OBJ_release_need;
-				que_val = QUE_TRACK_START;
-				xQueueSend(que, &que_val, (portTickType)0);
-				xTaskCreate(joshvm_audio_track_task,"joshvm_audio_track_task",2*1024,(void*)handle,JOSHVM_AUDIO_TRACK_TASK_PRI,&audio_track_handler);
-				ESP_LOGI(TAG,"AudioTrack start!");
-				break;
+				//pause->play
+				else if(handle->j_union.audioTrack.status == AUDIO_PAUSE){
+					printf("start -- resume\n");
+					que_val = QUE_TRACK_START;
+					xQueueSend(que, &que_val, (portTickType)0);
+					handle->j_union.audioTrack.status = AUDIO_START;
+					ret = JOSHVM_OK;
+					break;
+
+				}
 			case AUDIO_RECORDER:
+				printf("AUDIO_RECORDER\n");
 				handle->j_union.audioRecorder.status = AUDIO_START;
 				handle->j_union.audioRecorder.rb_callback_flag = NO_NEED_CB;				
 				if(joshvm_audio_recorder_init(handle) != JOSHVM_OK){
 					handle->j_union.audioRecorder.status = AUDIO_STOP;
+					printf("create failed\n");
 					//joshvm_esp32_media_close(handle);
 					joshvm_esp32_media_stop(handle);
 					return JOSHVM_FAIL;
-				}	
+				}
+				printf("321315123 %p\n",handle->j_union.audioRecorder.audiorecorder_t.pipeline);
 				handle->j_union.audioRecorder.obj_release_flag = OBJ_release_need;
 				xTaskCreate(joshvm_audio_recorder_task, "joshvm_audio_recorder_task", 2 * 1024, (void*)handle, JOSHVM_AUDIO_RECORDER_TASK_PRI, &audio_recorder_handler);
 				ESP_LOGI(TAG,"AudioRecorder start!");
-				break;
-			default :
-				ret = JOSHVM_NOT_SUPPORTED;
-				break;
-		}
-	}else{		//resume
-		audio_status = JOSHVM_MEDIA_PLAYING;
-		switch(handle->media_type){
-			case MEDIA_PLAYER:			
-				if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;		
-				ret = JOSHVM_OK;
-				break;
-			case MEDIA_RECORDER:				
-				ret = JOSHVM_NOT_SUPPORTED;
-				break;
-			case AUDIO_TRACK:				
-				if(audio_pipeline_resume(handle->j_union.audioTrack.audiotrack_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
-				handle->j_union.audioTrack.status = AUDIO_START;
-				ret = JOSHVM_OK;
-				break;
-			case AUDIO_RECORDER:
-				ret = JOSHVM_NOT_SUPPORTED;
 				break;
 			default :
 				ret = JOSHVM_NOT_SUPPORTED;
@@ -493,21 +495,25 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 		return JOSHVM_FAIL;
 	}
 	
-	int ret;
-	audio_status = JOSHVM_MEDIA_PAUSED;
+	QueueHandle_t que = handle->evt_que;
+	uint16_t que_val = 0;
+	int ret;	
 	switch(handle->media_type){
 		case MEDIA_PLAYER:			
-			ret = joshvm_audio_pause();	
+			if(joshvm_audio_pause() != ESP_OK){
+				return JOSHVM_FAIL;
+			}
+			handle->j_union.mediaPlayer.status = AUDIO_PAUSE;
+			ret = JOSHVM_OK;
 			break;
 		case MEDIA_RECORDER:
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
-		case AUDIO_TRACK:				
-			if(audio_pipeline_pause(handle->j_union.audioTrack.audiotrack_t.pipeline) != ESP_OK){
-				return JOSHVM_FAIL;
-			}	
+		case AUDIO_TRACK:
+			que_val = QUE_TRACK_PAUSE;
+			xQueueSend(que, &que_val, (portTickType)0);
 			handle->j_union.audioTrack.status = AUDIO_PAUSE;
-			ret = JOSHVM_OK;
+			ret = JOSHVM_OK;			
 			break;
 		case AUDIO_RECORDER:
 			ret = JOSHVM_NOT_SUPPORTED;
@@ -521,7 +527,7 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 
 int joshvm_esp32_media_stop(joshvm_media_t* handle)
 {
-	//ESP_LOGI(TAG,"joshvm_esp32_media_stop");
+	ESP_LOGI(TAG,"joshvm_esp32_media_stop");
 	if(handle == NULL){
 		ESP_LOGE(TAG,"project handle is null!");
 		return JOSHVM_FAIL;
@@ -553,7 +559,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 		case AUDIO_TRACK:	
 			if(handle->j_union.audioTrack.obj_release_flag == OBJ_release_need){
 				handle->j_union.audioTrack.obj_release_flag = OBJ_release_no;
-				handle->j_union.audioTrack.status = AUDIO_STOP;
+				//handle->j_union.audioTrack.status = AUDIO_STOP;
 				que_val = QUE_TRACK_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);			
 				ESP_LOGI(TAG,"AudioTrack stop!");
@@ -566,9 +572,11 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				handle->j_union.audioRecorder.status = AUDIO_STOP;
 				que_val = QUE_RECORD_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);
+				ESP_LOGI(TAG,"AudioRedorder stop1! %p  %p",handle,handle->j_union.audioRecorder.audiorecorder_t.pipeline);
 				if(audio_pipeline_terminate(handle->j_union.audioRecorder.audiorecorder_t.pipeline) != ESP_OK)	return JOSHVM_FAIL;
+				ESP_LOGI(TAG,"AudioRedorder stop2!");
 				joshvm_audio_rcorder_release(handle);
-				ESP_LOGI(TAG,"AudioRedorder stop!");
+				ESP_LOGI(TAG,"AudioRedorder stop3!");
 			}			
 			ret = JOSHVM_OK;
 			break;

@@ -507,10 +507,15 @@ void joshvm_audio_track_task(void* handle)
 	audio_element_handle_t raw_writer = ((joshvm_media_t*)handle)->j_union.audioTrack.audiotrack_t.raw_writer;
 	ring_buffer_t* audio_track_rb = ((joshvm_media_t*)handle)->j_union.audioTrack.track_rb;
 	while(task_run){
+	pause:	
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
 			while(1){//playing	
 				do{
+					xQueueReceive(que, &que_val, 0);
+					if(que_val == QUE_TRACK_PAUSE){
+						goto pause;
+					}
 					read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
 					if(read_size > 0){
 						track_check_time_cnt = 0;//clear  time
@@ -524,6 +529,7 @@ void joshvm_audio_track_task(void* handle)
 						//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );// block when data tracked out
 					}
 				}while(read_size > 0);
+					
 				if(que != NULL){	
 					xQueueReceive(que, &que_val, 0);
 				}else{
@@ -531,10 +537,14 @@ void joshvm_audio_track_task(void* handle)
 					task_run = 0;
 					break;
 				}
+				//stop
 				if((que_val == QUE_TRACK_STOP) && (track_check_time_cnt * 200 >= TRACK_CHENK_TIMEOUT)){ //delete track_check_time_cnt
-				//if(que_val == QUE_TRACK_STOP){
 					task_run = 0;
 					break;
+				}
+				//pause
+				if(que_val == QUE_TRACK_PAUSE){
+					goto pause;
 				}
 			}	
 		}		
@@ -546,6 +556,7 @@ void joshvm_audio_track_task(void* handle)
 		voicebuff = NULL;
 	}
 	//ring_buffer_flush(audio_track_rb);
+	((joshvm_media_t*)handle)->j_union.audioTrack.status = AUDIO_STOP;
 	vTaskDelete(NULL);
 }
 
