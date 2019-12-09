@@ -102,6 +102,8 @@ void joshvm_app_init(void)
 		//fun_test();		
 		//extern void test_esp32_media(void);
 		//test_esp32_media();
+		//extern void mediarecorder();
+		//mediarecorder();
 		//heap_caps_print_heap_info(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
 		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );  		
 		//JavaNativeTest();	
