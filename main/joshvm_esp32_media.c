@@ -134,7 +134,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4904>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4905>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -209,6 +209,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 					
 					ring_buffer_init(&audio_track_rb,A_TRACK_RB_SIZE);
+					joshvm_media->j_union.audioTrack.status = AUDIO_UNKNOW;
 					joshvm_media->j_union.audioTrack.sample_rate = j_audio_track_default_cfg.sample_rate;
 					joshvm_media->j_union.audioTrack.channel = j_audio_track_default_cfg.channel;
 					joshvm_media->j_union.audioTrack.bit_rate = j_audio_track_default_cfg.bit_rate;
@@ -462,7 +463,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 		audio_status = JOSHVM_MEDIA_PLAYING;
 		switch(handle->media_type){
 			case MEDIA_PLAYER:			
-				if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;
+				if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;		
 				ret = JOSHVM_OK;
 				break;
 			case MEDIA_RECORDER:				
@@ -470,6 +471,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				break;
 			case AUDIO_TRACK:				
 				if(audio_pipeline_resume(handle->j_union.audioTrack.audiotrack_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
+				handle->j_union.audioTrack.status = AUDIO_START;
 				ret = JOSHVM_OK;
 				break;
 			case AUDIO_RECORDER:
@@ -500,8 +502,12 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 		case MEDIA_RECORDER:
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
-		case AUDIO_TRACK:			
-			ret = audio_pipeline_pause(handle->j_union.audioTrack.audiotrack_t.pipeline);
+		case AUDIO_TRACK:				
+			if(audio_pipeline_pause(handle->j_union.audioTrack.audiotrack_t.pipeline) != ESP_OK){
+				return JOSHVM_FAIL;
+			}	
+			handle->j_union.audioTrack.status = AUDIO_PAUSE;
+			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
 			ret = JOSHVM_NOT_SUPPORTED;
@@ -693,6 +699,11 @@ int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int 
 		ESP_LOGE(TAG,"project handle is null!");
 		return JOSHVM_FAIL;
 	}
+
+	if(handle->j_union.audioTrack.status == AUDIO_STOP){
+		ESP_LOGE(TAG,"Can't write track-buffer,when you stopped audioTrack.You need to play track to write track-buffer.");
+		return JOSHVM_FAIL;	
+	}
 	
 	if(size > 32 * 1024){
 		ESP_LOGE(TAG,"trackWrite size is can't more then 1024");
@@ -711,6 +722,16 @@ int joshvm_esp32_media_flush(joshvm_media_t* handle)
 {
 	if(handle == NULL){
 		ESP_LOGE(TAG,"project handle is null!");
+		return JOSHVM_FAIL;
+	}
+
+	if(handle->media_type != AUDIO_TRACK){
+		ESP_LOGE(TAG,"Flush only for audioTrack!");
+		return JOSHVM_FAIL;
+	}
+
+	if((handle->j_union.audioTrack.status != AUDIO_STOP) && (handle->j_union.audioTrack.status != AUDIO_PAUSE)){
+		ESP_LOGE(TAG,"Flush can only run when audioTrack was stopped or pause status!");
 		return JOSHVM_FAIL;
 	}
 

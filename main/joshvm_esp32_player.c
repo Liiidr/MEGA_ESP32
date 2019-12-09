@@ -153,6 +153,7 @@ static void setup_player(joshvm_media_t* handle)
 	//esp_audio_output_stream_add(player,josh_i2s_stream_writer);
     i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
     i2s_writer.i2s_config.sample_rate = 48000;
+	//i2s_writer.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
     i2s_writer.type = AUDIO_STREAM_WRITER;
 	i2s_writer.i2s_config.intr_alloc_flags = ESP_INTR_FLAG_LEVEL1 | ESP_INTR_FLAG_LEVEL2 | ESP_INTR_FLAG_LEVEL3;
     esp_audio_output_stream_add(player, i2s_stream_init(&i2s_writer));	

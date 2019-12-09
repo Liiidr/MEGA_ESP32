@@ -34,8 +34,10 @@ typedef enum{
 }joshvm_type_t;
 
 enum{
-	AUDIO_START = 0,
+	AUDIO_UNKNOW = 0,
+	AUDIO_START,
 	AUDIO_STOP,
+	AUDIO_PAUSE,
 	NO_NEED_CB,
 	NEED_CB,
 }joshvm_audio_rb_callback_status_e;
