@@ -55,6 +55,7 @@
 
 //---variable
 esp_audio_handle_t player;
+int j_audioBoard_volume = 61;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
@@ -184,7 +185,6 @@ void joshvm_audio_player_destroy()
 {
 	if(player != NULL){
 		if(esp_audio_destroy(player) == ESP_ERR_AUDIO_NO_ERROR){
-			printf("player add :%p",player);
 			player = NULL;
 			//josh_i2s_stream_writer = NULL;
 		}
@@ -215,12 +215,10 @@ int joshvm_audio_play_handler(const char *url)
 	int ret = JOSHVM_FAIL;
 	esp_audio_state_t state;
 	esp_audio_state_get(player,&state);
-	printf("1 player state %d\n",state.status);
 	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
 		ESP_LOGW(TAG,"player is playing,status :%d",state.status);
 		ret = JOSHVM_FAIL;
 	}else{
-		printf("2 player state %d\n",state.status);
 		ESP_LOGI(TAG, "Playing : %s", url);
 		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
 		printf("esp_audio_play ret %d\n",ret);
@@ -313,17 +311,17 @@ audio_err_t joshvm_volume_get_handler(int *volume)
 
 audio_err_t joshvm_volume_set_handler(int volume)
 {
-	if(MegaBoard_handle == NULL){
-		ESP_LOGE(TAG,"Can't set volume,before instantiate a object");
-		return ESP_FAIL;
-	}
-	
 	if(volume < 0){
 		volume = 0;
 	}
 	if(volume > 100){
 		volume = 100;
 	}	
+
+	if(MegaBoard_handle == NULL){
+		j_audioBoard_volume = volume;
+		return ESP_OK;
+	}
 
 	if(audio_hal_set_volume(MegaBoard_handle->audio_hal, volume) == ESP_OK){
 		ESP_LOGI(TAG, "[ * ] Volume set to %d %%", volume);
@@ -336,7 +334,9 @@ void joshvm_volume_adjust_handler(int volume)
 {
     int vol = 0;
 	if(MegaBoard_handle == NULL){
-		ESP_LOGE(TAG,"Can't adjust volume,before instantiate a object");
+		j_audioBoard_volume += volume;
+		if(j_audioBoard_volume > 100)j_audioBoard_volume = 100;
+		if(j_audioBoard_volume < 0)j_audioBoard_volume = 0;	
 		return ;
 	}
 		

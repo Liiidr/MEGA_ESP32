@@ -63,6 +63,7 @@ audio_board_handle_t MegaBoard_handle = NULL;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 extern SemaphoreHandle_t s_mutex_recorder;
 extern SemaphoreHandle_t s_mutex_player;
+extern int j_audioBoard_volume;
 //extern EventGroupHandle_t j_EventGroup_player;
 extern audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type);
 
@@ -95,8 +96,7 @@ joshvm_err_t joshvm_mep32_board_init()
 		if(ret != ESP_OK){
 			goto err;
 		}
-		audio_hal_set_volume(MegaBoard_handle->audio_hal,61);
-
+		audio_hal_set_volume(MegaBoard_handle->audio_hal,j_audioBoard_volume);
 		audio_element_deinit(josh_i2s_stream_reader);
 		audio_element_deinit(josh_i2s_stream_writer);
 		return JOSHVM_OK;
@@ -134,7 +134,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4901>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4903>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -693,6 +693,11 @@ int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int 
 		ESP_LOGE(TAG,"project handle is null!");
 		return JOSHVM_FAIL;
 	}
+	
+	if(size > 32 * 1024){
+		ESP_LOGE(TAG,"trackWrite size is can't more then 1024");
+		return JOSHVM_FAIL;
+	}
 
 	handle->j_union.audioTrack.rb_callback = callback;
 	uint8_t ret = joshvm_audio_track_write(handle->j_union.audioTrack.status,handle->j_union.audioTrack.track_rb,buffer,size,bytesWritten);
@@ -868,7 +873,7 @@ int joshvm_esp32_media_set_source(joshvm_media_t* handle, char* source)
 			else if(strstr(source,fatfs_file) != NULL){
 				sprintf(url_source,"file:/%s",source);
 				handle->j_union.mediaPlayer.url = url_source;
-				ESP_LOGI(TAG,"Set MediaPlayer farfs Source:%s",url_source);
+				ESP_LOGI(TAG,"Set MediaPlayer fatfs Source:%s",url_source);
 			}//http_url
 			else{
 				handle->j_union.mediaPlayer.url = source;

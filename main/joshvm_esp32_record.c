@@ -300,32 +300,33 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 
 int joshvm_meida_recorder_formatcheck(joshvm_media_t *handle)
 {	
-	int url_size = strlen(handle->j_union.mediaRecorder.url);
-	
+	int url_size = strlen(handle->j_union.mediaRecorder.url);	
 	switch(handle->j_union.mediaRecorder.format){
 		case joshvm_meida_format_wav:
 			if(strstr((handle->j_union.mediaRecorder.url + url_size - 4),".wav")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".Wav")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".WAV")\
 			) return JOSHVM_OK;			
-	
 			break;
 		case joshvm_meida_format_amrnb:
-			if(strstr((handle->j_union.mediaRecorder.url + url_size - 6),".amrnb")\
-			
-|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".Amrnb")\
+			if(strstr((handle->j_union.mediaRecorder.url + url_size - 6),".amrnb")\			
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".Amrnb")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".AMRNB")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".AMRnb")\
-			) return JOSHVM_OK;
-			
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".amr")\
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".Amr")\
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".AMR")\
+			) return JOSHVM_OK;			
 			break;
 		case joshvm_meida_format_amrwb:
 			if(strstr((handle->j_union.mediaRecorder.url + url_size - 6),".amrwb")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".Amrwb")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".AMRwb")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".AMRWB")\
-			) return JOSHVM_OK;
-			
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".amr")\
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".Amr")\
+			|| strstr((handle->j_union.mediaRecorder.url + url_size - 4),".AMR")\
+			) return JOSHVM_OK;			
 			break;
 		case joshvm_meida_format_opus:
 			if(strstr((handle->j_union.mediaRecorder.url + url_size - 5),".opus")\
@@ -480,20 +481,21 @@ void joshvm_audio_track_task(void* handle)
 	while(task_run){
 		xQueueReceive(que, &que_val, portMAX_DELAY);
 		if(que_val == QUE_TRACK_START){
-			while(1){//playing					
-				read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
-				if(read_size > 0){
-					track_check_time_cnt = 0;//clear  time
-					if(NEED_CB == ((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback_flag){
-						((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;
-						void(*callback)(void*, int) = ((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback;
-						if(callback)callback(handle,JOSHVM_OK);
-					}						
-					raw_stream_write(raw_writer,(char*)voicebuff,read_size);
-				}else{
-					ulTaskNotifyTake( pdTRUE, portMAX_DELAY );// block when data tracked out
-				}				
-			
+			while(1){//playing	
+				do{
+					read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),audio_track_rb);
+					if(read_size > 0){
+						track_check_time_cnt = 0;//clear  time
+						if(NEED_CB == ((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback_flag){
+							((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;
+							void(*callback)(void*, int) = ((joshvm_media_t*)handle)->j_union.audioTrack.rb_callback;
+							if(callback)callback(handle,JOSHVM_OK);
+						}						
+						raw_stream_write(raw_writer,(char*)voicebuff,read_size);
+					}else{
+						//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );// block when data tracked out
+					}
+				}while(read_size > 0);
 				if(que != NULL){	
 					xQueueReceive(que, &que_val, 0);
 				}else{
@@ -501,8 +503,8 @@ void joshvm_audio_track_task(void* handle)
 					task_run = 0;
 					break;
 				}
-				//if((que_val == QUE_TRACK_STOP) && (track_check_time_cnt * 200 >= TRACK_CHENK_TIMEOUT)){ //delete track_check_time_cnt
-				if(que_val == QUE_TRACK_STOP){
+				if((que_val == QUE_TRACK_STOP) && (track_check_time_cnt * 200 >= TRACK_CHENK_TIMEOUT)){ //delete track_check_time_cnt
+				//if(que_val == QUE_TRACK_STOP){
 					task_run = 0;
 					break;
 				}
@@ -515,7 +517,7 @@ void joshvm_audio_track_task(void* handle)
 		audio_free(voicebuff);
 		voicebuff = NULL;
 	}
-	ring_buffer_flush(audio_track_rb);
+	//ring_buffer_flush(audio_track_rb);
 	vTaskDelete(NULL);
 }
 
@@ -523,9 +525,9 @@ int joshvm_audio_track_write(uint8_t status,ring_buffer_t* rb, unsigned char* bu
 {
 	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,rb,RB_NOT_COVER);
 	if(*bytesWritten > 0){
-		if(audio_track_handler != NULL){
-		 xTaskNotifyGive( audio_track_handler );
-		}
+//		if(audio_track_handler != NULL){
+//		 xTaskNotifyGive( audio_track_handler );
+//		}
 		return JOSHVM_OK;
 	}else if(*bytesWritten == 0){
 		if(AUDIO_STOP == status){
