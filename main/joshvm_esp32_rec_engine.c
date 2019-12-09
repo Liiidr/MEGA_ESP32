@@ -274,12 +274,13 @@ static void rec_engine_task(void *handle)
 		vQueueDelete(vad_que);
 		vad_que = NULL;
 	}	*/
+	/*
 	if(rec_engine->vad_state == VAD_START){
 		joshvm_rec_engine_destroy(rec_engine, VAD_STOP);
 		joshvm_esp32_media_close(joshvm_media_vad);
 	}else{
 		joshvm_rec_engine_destroy(rec_engine, WAKEUP_DISABLE);
-	}
+	}*/
 	//josh_i2s_stream_reader = NULL;
 	vTaskDelete(NULL);
 }

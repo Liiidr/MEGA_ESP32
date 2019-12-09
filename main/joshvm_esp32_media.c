@@ -134,7 +134,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.4906>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.50>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
