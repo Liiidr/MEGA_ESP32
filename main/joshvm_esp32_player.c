@@ -44,6 +44,7 @@
 #include "amr_decoder.h"
 #include "mp3_decoder.h"
 #include "aac_decoder.h"
+#include "opus_decoder.h"
 #include "http_stream.h"
 #include "filter_resample.h"
 #include "joshvm_esp32_player.h"
@@ -158,15 +159,19 @@ static void setup_player(joshvm_media_t* handle)
 
     // Add decoders and encoders to esp_audio
     wav_decoder_cfg_t wav_dec_cfg = DEFAULT_WAV_DECODER_CONFIG();
-	//amr_decoder_cfg_t amr_dec_cfg = DEFAULT_AMR_DECODER_CONFIG();
-    //amr_dec_cfg.task_core = 1;
+	wav_dec_cfg.task_core = 1;
+	amr_decoder_cfg_t amr_dec_cfg = DEFAULT_AMR_DECODER_CONFIG();
+    amr_dec_cfg.task_core = 1;
+	opus_decoder_cfg_t opus_dec_cfg = DEFAULT_OPUS_DECODER_CONFIG();
+	opus_dec_cfg.task_core = 1;
     mp3_decoder_cfg_t mp3_dec_cfg = DEFAULT_MP3_DECODER_CONFIG();
     mp3_dec_cfg.task_core = 1;
     aac_decoder_cfg_t aac_cfg = DEFAULT_AAC_DECODER_CONFIG();
     aac_cfg.task_core = 1;
     //esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, aac_decoder_init(&aac_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, wav_decoder_init(&wav_dec_cfg));
-	//esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, amr_decoder_init(&amr_dec_cfg));
+	esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, amr_decoder_init(&amr_dec_cfg));
+	esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, decoder_opus_init(&opus_dec_cfg));
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, mp3_decoder_init(&mp3_dec_cfg));
 
     audio_element_handle_t m4a_dec_cfg = aac_decoder_init(&aac_cfg);
