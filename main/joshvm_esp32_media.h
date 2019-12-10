@@ -44,6 +44,7 @@ enum{
 	AUDIO_UNKNOW = 0,
 	AUDIO_START,
 	AUDIO_STOP,
+	AUDIO_FINISH,//for track when stop and data playout will set audio_finish
 	AUDIO_PAUSE,
 	NO_NEED_CB,
 	NEED_CB,

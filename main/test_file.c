@@ -28,10 +28,10 @@
 #define TAG "TEST_FILE"
 
 //------------------test--start-----------------
-void *handle_media_rec_test = NULL;
-void *handle_media_player_test = NULL;
-void *handle_track_test = NULL;
-void *handle_recorder_test = NULL;
+joshvm_media_t *handle_media_rec_test = NULL;
+joshvm_media_t *handle_media_player_test = NULL;
+joshvm_media_t *handle_track_test = NULL;
+joshvm_media_t *handle_recorder_test = NULL;
 void test_esp32_media(void);
 static int callback_temp = 1;
 
@@ -180,15 +180,31 @@ void test_esp32_media(void)
 	//joshvm_esp32_wakeup_disable();
 
 	//joshvm_esp32_vad_stop();
+//	printf("1valie_size = %d\n",handle_recorder_test->j_union.audioRecorder.rec_rb->valid_size);
+//	printf("2valie_size = %d\n",handle_track_test->j_union.audioTrack.track_rb->valid_size);
+
+	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
+//	printf("3valie_size = %d\n",handle_recorder_test->j_union.audioRecorder.rec_rb->valid_size);
+//	printf("4valie_size = %d\n",handle_track_test->j_union.audioTrack.track_rb->valid_size);
+	
+	joshvm_esp32_media_pause(handle_track_test);
 
 
-	((joshvm_media_t*)handle_track_test)->j_union.audioTrack.track_rb = ((joshvm_media_t*)handle_recorder_test)->j_union.audioRecorder.rec_rb;
+	handle_track_test->j_union.audioTrack.track_rb = handle_recorder_test->j_union.audioRecorder.rec_rb;
+//	printf("5valie_size = %d\n",handle_recorder_test->j_union.audioRecorder.rec_rb->valid_size);
+//	printf("6valie_size = %d\n",handle_track_test->j_union.audioTrack.track_rb->valid_size);
 
 
 	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
 
-	vTaskDelay(10000 / portTICK_PERIOD_MS); 
-	printf("track  %d\n",audio_element_get_state(((joshvm_media_t*)handle_track_test)->j_union.audioTrack.audiotrack_t.i2s));
+	vTaskDelay(5000 / portTICK_PERIOD_MS); 
+
+	joshvm_esp32_media_pause(handle_track_test);
+	vTaskDelay(5000 / portTICK_PERIOD_MS); 
+	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
+
+	vTaskDelay(5000 / portTICK_PERIOD_MS); 
+	printf("track  %d\n",audio_element_get_state(handle_track_test->j_union.audioTrack.audiotrack_t.i2s));
 	joshvm_esp32_media_stop(handle_track_test);
 
 

@@ -134,7 +134,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.50>>>---\r\n");		
+		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.5001>>>---\r\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -420,16 +420,19 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 					handle->j_union.mediaPlayer.callback = callback;
 					if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url) != ESP_OK){
 						return JOSHVM_FAIL;
-					}	
+					}
+					handle->j_union.mediaPlayer.status = AUDIO_START;
 					ESP_LOGW(TAG,"player,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 					break;
 				}
 				//pause->play
 				else if(handle->j_union.mediaPlayer.status == AUDIO_PAUSE){				
-					if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;		
+					if(joshvm_audio_resume_handler(handle->j_union.mediaPlayer.url) != ESP_OK) return JOSHVM_FAIL;	
+					handle->j_union.mediaPlayer.status = AUDIO_START;
 					ret = JOSHVM_OK;
 					break;
 				}
+				break;
 			case MEDIA_RECORDER:
 				if(audio_pipeline_run(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK){
 					return JOSHVM_FAIL;
@@ -437,7 +440,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				break;
 			case AUDIO_TRACK:
 				//play
-				if((handle->j_union.audioTrack.status == AUDIO_UNKNOW) || (handle->j_union.audioTrack.status == AUDIO_STOP)){
+				if((handle->j_union.audioTrack.status == AUDIO_UNKNOW) || (handle->j_union.audioTrack.status == AUDIO_STOP) || (handle->j_union.audioTrack.status == AUDIO_FINISH)){
 					handle->j_union.audioTrack.status = AUDIO_START;
 					handle->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;				
 					if(joshvm_audio_track_init(handle) != JOSHVM_OK){
@@ -463,18 +466,16 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 					break;
 
 				}
+				break;
 			case AUDIO_RECORDER:
-				printf("AUDIO_RECORDER\n");
 				handle->j_union.audioRecorder.status = AUDIO_START;
 				handle->j_union.audioRecorder.rb_callback_flag = NO_NEED_CB;				
 				if(joshvm_audio_recorder_init(handle) != JOSHVM_OK){
 					handle->j_union.audioRecorder.status = AUDIO_STOP;
-					printf("create failed\n");
 					//joshvm_esp32_media_close(handle);
 					joshvm_esp32_media_stop(handle);
 					return JOSHVM_FAIL;
 				}
-				printf("321315123 %p\n",handle->j_union.audioRecorder.audiorecorder_t.pipeline);
 				handle->j_union.audioRecorder.obj_release_flag = OBJ_release_need;
 				xTaskCreate(joshvm_audio_recorder_task, "joshvm_audio_recorder_task", 2 * 1024, (void*)handle, JOSHVM_AUDIO_RECORDER_TASK_PRI, &audio_recorder_handler);
 				ESP_LOGI(TAG,"AudioRecorder start!");
@@ -483,7 +484,6 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				ret = JOSHVM_NOT_SUPPORTED;
 				break;
 		}
-	}	
 	return ret;
 }
 
@@ -545,6 +545,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				joshvm_audio_player_destroy();		
 				ESP_LOGI(TAG,"MediaPlayer stop!");
 			}
+			handle->j_union.mediaPlayer.status = AUDIO_STOP;
 			ret = JOSHVM_OK;			
 			break;
 		case MEDIA_RECORDER:
@@ -564,6 +565,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				xQueueSend(que, &que_val, (portTickType)0);			
 				ESP_LOGI(TAG,"AudioTrack stop!");
 			}
+			handle->j_union.audioTrack.status = AUDIO_STOP;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
@@ -708,7 +710,7 @@ int joshvm_esp32_media_write(joshvm_media_t* handle, unsigned char* buffer, int 
 		return JOSHVM_FAIL;
 	}
 
-	if(handle->j_union.audioTrack.status == AUDIO_STOP){
+	if((handle->j_union.audioTrack.status == AUDIO_STOP) || (handle->j_union.audioTrack.status == AUDIO_FINISH)){
 		ESP_LOGE(TAG,"Can't write track-buffer,when you stopped audioTrack.You need to play track to write track-buffer.");
 		return JOSHVM_FAIL;	
 	}

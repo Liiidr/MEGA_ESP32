@@ -70,7 +70,7 @@ void ring_buffer_flush(ring_buffer_t *rb);
  *
  * @return 	the truely size of wrote datas
  */
-uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb,uint8_t cover_type);
+int32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *rb,uint8_t cover_type);
 
 /**
  * @brief 	read data form ring_buffer
@@ -82,7 +82,7 @@ uint32_t ring_buffer_write(void *buffer_to_write, int32_t size, ring_buffer_t *r
  *
  * @return 	the truely size of read datas
  */
-uint32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb);
+int32_t ring_buffer_read(void *buff, int32_t size,ring_buffer_t *rb);
 
 
 
