@@ -80,9 +80,12 @@ void joshvm_app_init(void)
 	xSemaphore_MegaBoard_init = xSemaphoreCreateMutex(); 
 	s_mutex_recorder = xSemaphoreCreateMutex();  
 	s_mutex_player = xSemaphoreCreateMutex(); 
-    //audio_board_sdcard_init(set);
+
+	esp_periph_config_t periph_cfg = DEFAULT_ESP_PERIPH_SET_CONFIG();
+    esp_periph_set_handle_t set = esp_periph_set_init(&periph_cfg);
+    audio_board_sdcard_init(set);
     
-    app_sdcard_init();
+    //app_sdcard_init();
 	app_wifi_service();
 	joshvm_vad_timer();
 	ESP_LOGW(TAG,"Before javatask,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
