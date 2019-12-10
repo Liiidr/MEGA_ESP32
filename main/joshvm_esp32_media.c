@@ -134,7 +134,12 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.5001>>>---\r\n");		
+		//printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.5001>>>---\r\n");	
+		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
+		printf("|                                                                            |\n");
+		printf("|                  MEGA_ESP32 Firmware Version v1.0.0                        |\n");
+		printf("|                         Compile data:Dec. 10 2019                          |\n");
+		printf("------------------------------------------------------------------------------\n");		
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
