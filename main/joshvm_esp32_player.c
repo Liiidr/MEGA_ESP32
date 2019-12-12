@@ -183,8 +183,8 @@ static void setup_player(joshvm_media_t* handle)
     audio_element_set_tag(ts_dec_cfg, "ts");
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, ts_dec_cfg);
 
-    AUDIO_MEM_SHOW(TAG);
-    ESP_LOGI(TAG, "esp_audio instance is:%p", player);
+    //AUDIO_MEM_SHOW(TAG);
+    //ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
 
 void joshvm_audio_player_destroy()
