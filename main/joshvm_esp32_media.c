@@ -137,7 +137,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 		//printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.5001>>>---\r\n");	
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version v1.0.0                        |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2                  |\n");
 		printf("|                         Compile data:Dec. 10 2019                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
