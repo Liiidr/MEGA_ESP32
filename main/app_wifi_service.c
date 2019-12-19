@@ -47,6 +47,7 @@ typedef struct{
 static periph_service_handle_t wifi_serv = NULL;
 static app_wifi_aksta_config_t *ak_sta = NULL;
 static app_wifi_propsta_config_t *app_wifi_config = NULL;
+static int8_t app_wifi_ak_profile_saveflag = UNINITIALIZED;
 uint8_t app_wifi_state = UNINITIALIZED;
 QueueHandle_t app_wifi_serv_queue = NULL;
 
@@ -167,6 +168,7 @@ static void app_wifi_airkiss_enable()
 {
 	printf("enable airkiss.\n");
 	app_wifi_state = AIRKISS_SETTING;
+	app_wifi_ak_profile_saveflag = AIRKISS_SETTING;
 	wifi_service_setting_start(wifi_serv, 0);
 }
 
@@ -174,16 +176,30 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
 {
     ESP_LOGD(TAG, "event type:%d,source:%p, data:%p,len:%d,ctx:%p",
              evt->type, evt->source, evt->data, evt->len, ctx);
-	ESP_LOGI(TAG,"state = %d",wifi_service_state_get(wifi_serv));
-			 
+		 
 	if(evt->type == WIFI_SERV_EVENT_CONNECTING){
         ESP_LOGI(TAG, "PERIPH_WIFI_CONNECTING [%d]", __LINE__);
 		app_wifi_state = CONNECTING;
 	}
 	else if (evt->type == WIFI_SERV_EVENT_CONNECTED) {		
         printf("PERIPH_WIFI_CONNECTED [%d]\n\n", __LINE__);
-		app_wifi_state = CONNECTED;
-			
+		if(app_wifi_ak_profile_saveflag == AIRKISS_SETTING){
+			app_wifi_ak_profile_saveflag = UNINITIALIZED;
+			wifi_config_t info;
+			memset(&info, 0x00, sizeof(wifi_config_t));
+			if (ESP_OK == esp_wifi_get_config(WIFI_IF_STA, &info)) {
+				if (info.sta.ssid[0] != 0) {
+					printf("Connect to Wi-Fi SSID:%s PWD:%s\n", info.sta.ssid,info.sta.password);
+					app_wifi_get_airkisscfg((char*)info.sta.ssid,(char*)info.sta.password);
+				}else{
+					ESP_LOGW(TAG, "No wifi SSID stored!");
+				}		
+			} else {
+				ESP_LOGW(TAG, "No wifi SSID stored!");
+			}			
+		}
+	
+		app_wifi_state = CONNECTED;			
     } else if (evt->type == WIFI_SERV_EVENT_DISCONNECTED) {
         ESP_LOGI(TAG, "PERIPH_WIFI_DISCONNECTED [%d]", __LINE__);
 		uint32_t senddata = APP_WIFI_SERV_DISCONNECTED;
@@ -215,14 +231,14 @@ static void app_wifi_task(void *parameter)
 				cnt++;				
 				if(cnt > 3) cnt = 1;				
 				switch(cnt){
-					case	PROPERTY_CFG:						
+					case	PROPERTY_CFG:	
 						app_wifi_state = CONNECTING;
 						if(app_wifi_property_cfg_connect() == JOSHVM_OK){
 							break;
 						}
 					//if property profile connect fail,it is need to connect airkiss profile without break case PROPERTY_CFG
 						cnt++;
-					case	LAST_AIRKISS_CFG:						
+					case	LAST_AIRKISS_CFG:
 						app_wifi_state = CONNECTING;
 						if(app_wifi_airkiss_cfg_connect() == JOSHVM_FAIL){
 							app_wifi_airkiss_enable();
@@ -305,6 +321,7 @@ joshvm_err_t joshvm_esp32_wifi_set(char* ssid, char* password, int force)
 joshvm_err_t joshvm_esp32_wifi_get_state(int* state)
 {
 	*state = app_wifi_state;
+	printf("wifi_state :%d\n",app_wifi_state);
 	return JOSHVM_OK;
 }
 
