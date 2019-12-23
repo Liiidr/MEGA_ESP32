@@ -17,7 +17,8 @@ typedef enum{
 	QUE_TRACK_PAUSE = 0,
 	QUE_TRACK_START,
 	QUE_TRACK_STOP,
-	QUE_RECORD_STOP
+	QUE_RECORD_STOP,
+	QUE_TRACK_CLOSE
 }joshvm_evt_que_t;
 
 typedef enum{
@@ -51,8 +52,8 @@ enum{
 }joshvm_audio_rb_callback_status_e;
 
 enum{
-	OBJ_release_need = 0,
-	OBJ_release_no
+	OBJ_release_no = 0,	
+	OBJ_release_need
 }joshvm_media_release_e;
 	
 //---struct
@@ -155,10 +156,11 @@ joshvm_err_t joshvm_mep32_board_init(void);
  *
  * @note 
  * @param 	type  
- *				-0	create MediaPlyaer
- *				-1	create MediaPlyaer
- *				-2	create MediaPlyaer
- *				-3	create MediaPlyaer
+ *				0	create MediaPlyaer
+ *				1	create MediaRecorder
+ *				2	create AudioTrack
+ *				3	create AudioRecorder
+ *				4	create AudioVAD
  *			handle
  *
  * @return (error code)

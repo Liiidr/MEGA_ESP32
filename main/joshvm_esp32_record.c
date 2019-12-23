@@ -337,7 +337,7 @@ int joshvm_meida_recorder_formatcheck(joshvm_media_t *handle)
 			) return JOSHVM_OK;			
 			break;
 		case joshvm_meida_format_amrnb:
-			if(strstr((handle->j_union.mediaRecorder.url + url_size - 6),".amrnb")\			
+			if(strstr((handle->j_union.mediaRecorder.url + url_size - 6),".amrnb")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".Amrnb")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".AMRNB")\
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 6),".AMRnb")\
@@ -515,6 +515,13 @@ pause:
 					if(que_val == QUE_TRACK_PAUSE){
 						goto pause;
 					}
+
+					if(que_val == QUE_TRACK_CLOSE){
+						task_run = 0;
+						((joshvm_media_t*)handle)->j_union.audioTrack.status = AUDIO_FINISH;
+						goto exit;
+					}
+					
 					read_size = ring_buffer_read(voicebuff,VOICEBUFF_SIZE * sizeof(short),((joshvm_media_t*)handle)->j_union.audioTrack.track_rb);
 					if(read_size > 0){
 						track_check_time_cnt = 0;//clear  time
@@ -525,12 +532,12 @@ pause:
 						}						
 						raw_stream_write(raw_writer,(char*)voicebuff,read_size);
 					}else{
-						//ulTaskNotifyTake( pdTRUE, portMAX_DELAY );// block when data tracked out
 					}
 				}while(read_size > 0);
 				//get que_val	
 				if(que != NULL){	
 					xQueueReceive(que, &que_val, 0);
+					vTaskDelay(50/portTICK_PERIOD_MS);
 				}else{
 					ESP_LOGW(TAG,"Are you close track without stop track before?");
 					task_run = 0;
@@ -549,6 +556,7 @@ pause:
 			}	
 		}		
 	}
+exit:	
 	ESP_LOGI(TAG,"AudioTrack finish playing");
 	joshvm_audio_track_release(handle);
 	if(voicebuff != NULL){
@@ -563,9 +571,6 @@ int joshvm_audio_track_write(uint8_t status,ring_buffer_t* rb, unsigned char* bu
 {
 	*bytesWritten = ring_buffer_write((int8_t*)buffer,size,rb,RB_NOT_COVER);
 	if(*bytesWritten > 0){
-//		if(audio_track_handler != NULL){
-//		 xTaskNotifyGive( audio_track_handler );
-//		}
 		return JOSHVM_OK;
 	}else if(*bytesWritten == 0){
 		if(AUDIO_STOP == status){

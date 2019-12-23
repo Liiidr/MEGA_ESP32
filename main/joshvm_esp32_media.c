@@ -137,7 +137,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 		//printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.5001>>>---\r\n");	
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.1                  |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2                  |\n");
 		printf("|                         Compile data:Dec. 10 2019                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
@@ -282,10 +282,12 @@ int joshvm_esp32_media_create(int type, void** handle)
 
 int joshvm_esp32_media_close(joshvm_media_t* handle)
 {
-	ESP_LOGI(TAG,"joshvm_esp32_media_close");
+	ESP_LOGI(TAG,"joshvm_esp32_media_close--media_type = %d",handle->media_type);
 	if(handle == NULL){
 		return JOSHVM_OK;
 	}	
+
+	int32_t que_val;
 	
 	switch(handle->media_type)
 	{
@@ -307,15 +309,18 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			break;
 		case AUDIO_TRACK:
 			a_track_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->j_union.audioTrack.track_rb);
+			que_val = QUE_TRACK_CLOSE;
+			xQueueSend(handle->evt_que, &que_val, (portTickType)0);	
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_player);
+			vTaskDelay(50/portTICK_PERIOD_MS);
+			ring_buffer_deinit(handle->j_union.audioTrack.track_rb);
 			break;
 		case AUDIO_RECORDER:
-			a_rec_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->j_union.audioRecorder.rec_rb);
+			a_rec_obj_created_status = OBJ_CREATED_NOT;			
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_recorder);
+			ring_buffer_deinit(handle->j_union.audioRecorder.rec_rb);
 			break;
 		case AUDIO_VAD_REC:			
 			a_vad_obj_created_status = OBJ_CREATED_NOT;
@@ -579,11 +584,8 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				handle->j_union.audioRecorder.status = AUDIO_STOP;
 				que_val = QUE_RECORD_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);
-				ESP_LOGI(TAG,"AudioRedorder stop1! %p  %p",handle,handle->j_union.audioRecorder.audiorecorder_t.pipeline);
 				if(audio_pipeline_terminate(handle->j_union.audioRecorder.audiorecorder_t.pipeline) != ESP_OK)	return JOSHVM_FAIL;
-				ESP_LOGI(TAG,"AudioRedorder stop2!");
 				joshvm_audio_rcorder_release(handle);
-				ESP_LOGI(TAG,"AudioRedorder stop3!");
 			}			
 			ret = JOSHVM_OK;
 			break;
