@@ -96,17 +96,6 @@ void joshvm_app_init(void)
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 
 	while (1) {		
-		//extern void player_test();
-		//player_test();
-		//extern void fun_test();
-		//fun_test();		
-		//extern void test_esp32_media(void);
-		//test_esp32_media();
-		//extern void mediarecorder();
-		//mediarecorder();
-		//heap_caps_print_heap_info(MALLOC_CAP_8BIT | MALLOC_CAP_INTERNAL);
-		//pvCreatedTask_vadtask = uxTaskGetStackHighWaterMark( NULL );  		
-		//JavaNativeTest();	
 		JavaTask(); 
 		
 		for (int i = 10; i >= 0; i--) {

@@ -20,7 +20,6 @@
 #define A_TRACK_RB_SIZE (48*10000)
 #define A_VAD_RB_SIZE (48*10000)	//16K*1CHA*16/8*15S 
 //---variable
-static int8_t audio_status = 0;
 typedef struct{
 	int format;
 	char* url;
@@ -29,9 +28,6 @@ typedef struct{
 	int bit_rate;
 }j_meida_rec_default_cfg_t;
 static j_meida_rec_default_cfg_t j_meida_rec_default_cfg = {joshvm_meida_format_wav,"/sdcard/default.wav",16000,1,16}; 
-//static j_meida_rec_default_cfg_t j_meida_rec_info = {joshvm_meida_format_wav,"/sdcard/default.wav",16000,1,16}; 
-
-
 
 static struct{
 	int sample_rate;
@@ -64,7 +60,6 @@ extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 extern SemaphoreHandle_t s_mutex_recorder;
 extern SemaphoreHandle_t s_mutex_player;
 extern int j_audioBoard_volume;
-//extern EventGroupHandle_t j_EventGroup_player;
 extern audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channels, audio_stream_type_t type);
 
 
@@ -72,7 +67,6 @@ void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_callback");
 
-	//audio_status = JOSHVM_MEDIA_RESERVE;
 	handle->j_union.mediaPlayer.callback(handle,errcode);
 }
 
@@ -83,9 +77,6 @@ joshvm_err_t joshvm_mep32_board_init()
 		audio_element_handle_t josh_i2s_stream_reader = create_i2s_stream(48000,16,1,AUDIO_STREAM_READER);
 		audio_element_handle_t josh_i2s_stream_writer = create_i2s_stream(48000,16,1,AUDIO_STREAM_WRITER);
 		
-//		if(joshvm_esp32_i2s_create() == JOSHVM_FAIL){
-//			return JOSHVM_FAIL;
-//		}
 		ESP_LOGI(TAG,"Init Board");
 		MegaBoard_handle = audio_board_init();
 		if((MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
@@ -134,7 +125,6 @@ int joshvm_esp32_media_create(int type, void** handle)
 	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
-		//printf("---<<<MEGA_ESP32 Firmware Version Alpha_v1.5001>>>---\r\n");	
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
 		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2                  |\n");
@@ -189,11 +179,6 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->j_union.mediaRecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
 					joshvm_media->j_union.mediaRecorder.channel = j_meida_rec_default_cfg.channel;
 					joshvm_media->j_union.mediaRecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
-				
-//					if(joshvm_meida_recorder_init(joshvm_media) != JOSHVM_OK){
-//						joshvm_esp32_media_close(joshvm_media);
-//						return JOSHVM_FAIL;
-//					}
 					ESP_LOGI(TAG,"MediaRecorder created!");					
 					*handle = joshvm_media;
 				}else{
@@ -366,15 +351,6 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 	return JOSHVM_OK;
 }
 
-//void joshvm_media_recorder_setinfo(  joshvm_media_t *handle)
-//{
-//	handle->j_union.mediaRecorder.bit_rate 		= j_meida_rec_info.bit_rate;
-//	handle->j_union.mediaRecorder.channel 		= j_meida_rec_info.channel;
-//	handle->j_union.mediaRecorder.format 		= j_meida_rec_info.format;
-//	handle->j_union.mediaRecorder.sample_rate 	= j_meida_rec_info.sample_rate;
-//	handle->j_union.mediaRecorder.url 			= j_meida_rec_info.url;
-//}
-
 int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, int))
 {
 	if(handle == NULL){
@@ -455,7 +431,6 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 					handle->j_union.audioTrack.rb_callback_flag = NO_NEED_CB;				
 					if(joshvm_audio_track_init(handle) != JOSHVM_OK){
 						handle->j_union.audioTrack.status = AUDIO_STOP;					
-						//joshvm_esp32_media_close(handle);
 						joshvm_esp32_media_stop(handle);
 						return JOSHVM_FAIL;
 					}
@@ -570,7 +545,6 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 		case AUDIO_TRACK:	
 			if(handle->j_union.audioTrack.obj_release_flag == OBJ_release_need){
 				handle->j_union.audioTrack.obj_release_flag = OBJ_release_no;
-				//handle->j_union.audioTrack.status = AUDIO_STOP;
 				que_val = QUE_TRACK_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);			
 				ESP_LOGI(TAG,"AudioTrack stop!");
@@ -792,7 +766,6 @@ int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t va
 			break;
 		case MEDIA_RECORDER:
 			handle->j_union.mediaRecorder.sample_rate = value;
-			//j_meida_rec_info.sample_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
@@ -829,7 +802,6 @@ int joshvm_esp32_media_set_channel_config(joshvm_media_t* handle, uint8_t value)
 			break;
 		case MEDIA_RECORDER:
 			handle->j_union.mediaRecorder.channel = value;
-			//j_meida_rec_info.channel = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
@@ -865,7 +837,6 @@ int joshvm_esp32_media_set_audio_bit_rate(joshvm_media_t* handle, uint8_t value)
 			break;
 		case MEDIA_RECORDER:
 			handle->j_union.mediaRecorder.bit_rate = value;
-			//j_meida_rec_info.bit_rate = value;
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
@@ -933,7 +904,6 @@ int joshvm_esp32_media_set_output_file(joshvm_media_t* handle, char* file)
 	switch(handle->media_type){
 		case MEDIA_RECORDER:
 			handle->j_union.mediaRecorder.url = file;
-			//j_meida_rec_info.url = file;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -954,7 +924,6 @@ int joshvm_esp32_media_set_output_format(joshvm_media_t* handle, int format)
 	switch(handle->media_type){
 		case MEDIA_RECORDER:
 			handle->j_union.mediaRecorder.format = format;
-			//j_meida_rec_info.format = format;
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -995,7 +964,6 @@ int joshvm_esp32_media_set_position(joshvm_media_t* handle, int pos, void(*callb
 	int ret;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
-			//handle->j_union.mediaPlayer.positon = pos;
 			ret = JOSHVM_FAIL;
 			break;
 		default :

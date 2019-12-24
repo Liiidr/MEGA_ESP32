@@ -87,9 +87,7 @@ typedef struct{
 static const char *TAG = "JOSHVM_REC_ENGINE";
 rec_engine_t rec_engine  = {WAKEUP_DISABLE,VAD_STOP,pause_resume_flag_resume,1000,NULL,NULL};
 static int8_t need_notify_vad_stop = false;
-//static uint16_t que_val = 0;
 static int8_t task_run =1;
-//static QueueHandle_t vad_que = NULL;
 static 	int8_t vad_writer_buff_flag = 0;
 extern joshvm_media_t *joshvm_media_vad;
 extern uint8_t wakeup_obj_created_status;
@@ -139,7 +137,6 @@ static void rec_engine_vad_callback(int16_t type)
 
 static void rec_engine_task(void *handle)
 {
-	//vad_que = xQueueCreate(4, sizeof(uint16_t));	
 	const esp_sr_iface_t *model = &esp_sr_wakenet5_quantized;
 	model_iface_data_t *iface = model->create(DET_MODE_90);
 	int audio_chunksize = model->get_samp_chunksize(iface);
@@ -163,7 +160,6 @@ static void rec_engine_task(void *handle)
 	pipeline = audio_pipeline_init(&pipeline_cfg);
 	mem_assert(pipeline);
 
-	//joshvm_esp32_i2s_create();	
 	i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
 	i2s_cfg.i2s_config.sample_rate = 48000;
 	i2s_cfg.type = AUDIO_STREAM_READER;
@@ -270,18 +266,6 @@ static void rec_engine_task(void *handle)
 	model = NULL;
 	free(buff);
 	buff = NULL;	
-	/*if(vad_que != NULL){
-		vQueueDelete(vad_que);
-		vad_que = NULL;
-	}	*/
-	/*
-	if(rec_engine->vad_state == VAD_START){
-		joshvm_rec_engine_destroy(rec_engine, VAD_STOP);
-		joshvm_esp32_media_close(joshvm_media_vad);
-	}else{
-		joshvm_rec_engine_destroy(rec_engine, WAKEUP_DISABLE);
-	}*/
-	//josh_i2s_stream_reader = NULL;
 	vTaskDelete(NULL);
 }
 

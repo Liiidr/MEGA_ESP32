@@ -60,9 +60,7 @@ int j_audioBoard_volume = 61;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
-//EventGroupHandle_t j_EventGroup_player = NULL; 
 extern audio_board_handle_t MegaBoard_handle;
-//extern audio_element_handle_t josh_i2s_stream_writer;
 
 //---struct
 typedef struct{
@@ -93,11 +91,6 @@ static void esp_audio_state_task (void *para)
 			}
 			joshvm_esp32_media_callback(handle,errcode);
 			xEventGroupSetBits(handle->j_union.mediaPlayer.evt_group_stop, J_STOP_BIT_0);
-//			if((uxBits & J_STOP_BIT_0) != 0){
-//				printf("J_STOP_BIT_0 not clear\n");
-//			}else{
-//				printf("J_STOP_BIT_0 bits was clear\n");
-//			}
         } 			
     }
 }
@@ -149,8 +142,6 @@ static void setup_player(joshvm_media_t* handle)
     esp_audio_input_stream_add(player, http_stream_init(&http_cfg));
 
     //add to esp_audio
-    //joshvm_esp32_i2s_create();
-	//esp_audio_output_stream_add(player,josh_i2s_stream_writer);
     i2s_stream_cfg_t i2s_writer = I2S_STREAM_CFG_DEFAULT();
     i2s_writer.i2s_config.sample_rate = 48000;
 	//i2s_writer.i2s_config.channel_format = I2S_CHANNEL_FMT_ONLY_LEFT;
@@ -275,12 +266,7 @@ audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle)
                                      pdTRUE,             
                                      50/portTICK_PERIOD_MS); 
 	}
-//    if((uxBits & J_STOP_BIT_0) == J_STOP_BIT_0){       
-//        printf("receive J_STOP_BIT_0\r\n");
-//    }
-//    else{        
-//        printf("haven't receive J_STOP_BIT_0\r\n");
-//    }	
+
 	return ret;
 }
 
