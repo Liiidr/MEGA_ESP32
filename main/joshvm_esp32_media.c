@@ -127,8 +127,8 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2                  |\n");
-		printf("|                         Compile data:Dec. 10 2019                          |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.1                |\n");
+		printf("|                         Compile data:Dec. 24 2019                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
 
@@ -156,7 +156,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 						return JOSHVM_FAIL;
 					} 
 					*handle = joshvm_media;			
-					ret = JOSHVM_OK;
+					ESP_LOGI(TAG,"MediaPlayder creating finish!");	
 				}else{
 					ESP_LOGW(TAG,"MediaPlayer has arleady created!Can't create again!");
 					ret =  JOSHVM_FAIL;
@@ -178,9 +178,9 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->j_union.mediaRecorder.url = j_meida_rec_default_cfg.url;
 					joshvm_media->j_union.mediaRecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
 					joshvm_media->j_union.mediaRecorder.channel = j_meida_rec_default_cfg.channel;
-					joshvm_media->j_union.mediaRecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;	
-					ESP_LOGI(TAG,"MediaRecorder created!");					
+					joshvm_media->j_union.mediaRecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;									
 					*handle = joshvm_media;
+					ESP_LOGI(TAG,"MediaRecorder creating finish!");	
 				}else{
 					ESP_LOGW(TAG,"MediaRecorder has arleady created!Can't create again!");
 					ret =  JOSHVM_FAIL;
@@ -204,10 +204,9 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->j_union.audioTrack.channel = j_audio_track_default_cfg.channel;
 					joshvm_media->j_union.audioTrack.bit_rate = j_audio_track_default_cfg.bit_rate;
 
-					joshvm_media->j_union.audioTrack.track_rb = &audio_track_rb;
-					ESP_LOGI(TAG,"AudioTrack created!");					
+					joshvm_media->j_union.audioTrack.track_rb = &audio_track_rb;					
 					*handle = joshvm_media;
-					ret = JOSHVM_OK;
+					ESP_LOGI(TAG,"AudioTrack creating finish!");	
 				}else{
 					ESP_LOGW(TAG,"AudioTrack has arleady created!Can't create again!");
 					ret =  JOSHVM_FAIL;
@@ -229,10 +228,9 @@ int joshvm_esp32_media_create(int type, void** handle)
 					joshvm_media->j_union.audioRecorder.sample_rate = j_audio_rec_default_cfg.sample_rate;
 					joshvm_media->j_union.audioRecorder.channel = j_audio_rec_default_cfg.channel;
 					joshvm_media->j_union.audioRecorder.bit_rate = j_audio_rec_default_cfg.bit_rate;
-					joshvm_media->j_union.audioRecorder.rec_rb = &audio_recorder_rb;
-					ESP_LOGI(TAG,"AudioRecorder created!");					
+					joshvm_media->j_union.audioRecorder.rec_rb = &audio_recorder_rb;					
 					*handle = joshvm_media;
-					ret = JOSHVM_OK;
+					ESP_LOGI(TAG,"AudioRecorder creating finish!");	
 				}else{
 					ESP_LOGW(TAG,"AudioRecorder has arleady created!Can't create again!");
 					ret =  JOSHVM_FAIL;
@@ -251,10 +249,9 @@ int joshvm_esp32_media_create(int type, void** handle)
 			joshvm_media_vad->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 
 			ring_buffer_init(&audio_vad_rb,A_VAD_RB_SIZE);
-			joshvm_media_vad->j_union.vad.rec_rb = &audio_vad_rb;				
-			ESP_LOGI(TAG,"VAD AudioRecorder created!");					
+			joshvm_media_vad->j_union.vad.rec_rb = &audio_vad_rb;								
 			*handle = joshvm_media_vad;
-			ret = JOSHVM_OK;			
+			ESP_LOGI(TAG,"AudioVAD creating finish!");				
 		}else{
 			ESP_LOGW(TAG,"VAD has arleady created!Can't create again!");
 			ret =  JOSHVM_FAIL;
@@ -299,18 +296,26 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_player);
 			vTaskDelay(50/portTICK_PERIOD_MS);
-			ring_buffer_deinit(handle->j_union.audioTrack.track_rb);
+			if(handle->j_union.audioTrack.track_rb != NULL){
+				ring_buffer_deinit(handle->j_union.audioTrack.track_rb);
+			}
+			ESP_LOGI(TAG,"AudioTrack closed!");
 			break;
 		case AUDIO_RECORDER:
 			a_rec_obj_created_status = OBJ_CREATED_NOT;			
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_recorder);
-			ring_buffer_deinit(handle->j_union.audioRecorder.rec_rb);
+			if(handle->j_union.audioRecorder.rec_rb != NULL){
+				ring_buffer_deinit(handle->j_union.audioRecorder.rec_rb);
+			}
+			ESP_LOGI(TAG,"AudioRecorder closed!");
 			break;
 		case AUDIO_VAD_REC:			
 			a_vad_obj_created_status = OBJ_CREATED_NOT;
-			ring_buffer_deinit(handle->j_union.vad.rec_rb);
-			
+			if(handle->j_union.vad.rec_rb != NULL){
+				ring_buffer_deinit(handle->j_union.vad.rec_rb);
+			}	
+			ESP_LOGI(TAG,"AudioVAD closed!");
 			break;
 		default:
 			break;
@@ -346,7 +351,6 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			MegaBoard_handle = NULL;
 		}		
 		xSemaphoreGive( xSemaphore_MegaBoard_init );
-		//joshvm_esp32_i2s_deinit();
 	}
 	return JOSHVM_OK;
 }
@@ -536,6 +540,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 		case MEDIA_RECORDER:
 			if(handle->j_union.mediaRecorder.obj_release_flag == OBJ_release_need){
 				handle->j_union.mediaRecorder.obj_release_flag = OBJ_release_no;
+				if(handle->j_union.mediaRecorder.recorder_t.pipeline == NULL)return JOSHVM_FAIL;
 				if(audio_pipeline_terminate(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
 				joshvm_media_recorder_release(handle);
 				ESP_LOGI(TAG,"MediaRecorder stop!");
@@ -558,8 +563,10 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				handle->j_union.audioRecorder.status = AUDIO_STOP;
 				que_val = QUE_RECORD_STOP;
 				xQueueSend(que, &que_val, (portTickType)0);
+				if(handle->j_union.audioRecorder.audiorecorder_t.pipeline == NULL)return JOSHVM_FAIL;
 				if(audio_pipeline_terminate(handle->j_union.audioRecorder.audiorecorder_t.pipeline) != ESP_OK)	return JOSHVM_FAIL;
 				joshvm_audio_rcorder_release(handle);
+				ESP_LOGI(TAG,"AudioRecorder stop!");
 			}			
 			ret = JOSHVM_OK;
 			break;
