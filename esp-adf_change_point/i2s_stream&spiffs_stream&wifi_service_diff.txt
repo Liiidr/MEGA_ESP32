@@ -2,6 +2,10 @@
 
 1、
 $diff i2s_stream.c i2s_stream_old.c -b -B > i2s_stream_diff.txt
+148c148
+<     //i2s_driver_uninstall(i2s->config.i2s_port);
+---
+>     i2s_driver_uninstall(i2s->config.i2s_port);
 358,363d357
 < 	//modify by li begin 2019/11/13
 <     if(i2s_driver_install(i2s->config.i2s_port, &i2s->config.i2s_config, 0, NULL) != ESP_OK){ 	

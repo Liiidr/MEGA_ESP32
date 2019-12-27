@@ -1,0 +1,1 @@
+按照wifi_1.jpg /wifi_2.jpg修改可以缓解通过http播放流时不流畅问题
