@@ -82,7 +82,7 @@ joshvm_err_t joshvm_mep32_board_init()
 		if((MegaBoard_handle->audio_hal == NULL) || (MegaBoard_handle->adc_hal == NULL)){
 			goto err;			
 		}
-	
+
 		int ret = audio_hal_ctrl_codec(MegaBoard_handle->audio_hal, AUDIO_HAL_CODEC_MODE_BOTH, AUDIO_HAL_CTRL_START);
 		if(ret != ESP_OK){
 			goto err;
@@ -127,7 +127,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.1                |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.3                |\n");
 		printf("|                         Compile data:Dec. 24 2019                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}

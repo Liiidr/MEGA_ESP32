@@ -1,3 +1,43 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+#include "freertos/semphr.h"
+#include "freertos/timers.h"
+#include "driver/gpio.h"
+#include "esp_system.h"
+#include "esp_log.h"
+#include "board.h"
+#include "audio_common.h"
+#include "audio_pipeline.h"
+#include "mp3_decoder.h"
+#include "i2s_stream.h"
+#include "raw_stream.h"
+#include "filter_resample.h"
+#include "esp_wn_iface.h"
+#include "esp_wn_models.h"
+#include "rec_eng_helper.h"
+
+static const char *TAG = "example_asr_keywords";
+static const char *EVENT_TAG = "asr_event";
+
+typedef enum {
+    WAKE_UP = 1,
+    OPEN_THE_LIGHT,
+    CLOSE_THE_LIGHT,
+    VOLUME_INCREASE,
+    VOLUME_DOWN,
+    PLAY,
+    PAUSE,
+    MUTE,
+    PLAY_LOCAL_MUSIC,
+} asr_event_t;
+
+
+
+
+
 #include <stdarg.h>
 #include <string.h>
 #include <stdlib.h>
@@ -95,21 +135,28 @@ static void wake_callback(int index)
 	joshvm_esp32_vad_start(vad_callback);	
 }
 
-void fun_test()
+void wakeup_test()
 {	
 	joshvm_esp32_wakeup_enable(wake_callback);
-	joshvm_esp32_media_create(4,&handle_vad_rec);
-	//joshvm_esp32_vad_start(vad_callback);
-		
-	joshvm_esp32_media_create(0,&handle_media_player);
-	joshvm_esp32_media_set_source(handle_media_player,MP3_URI2);
-	joshvm_esp32_media_start(handle_media_player,player_callback);
 
-	vTaskDelay(5000);
-	//joshvm_esp32_media_stop(handle_media_player);
 
-	//extern joshvm_err_t joshvm_esp32_i2s_deinit(void);
-	//joshvm_esp32_i2s_deinit();
+//	joshvm_esp32_media_create(4,&handle_vad_rec);
+//	//joshvm_esp32_vad_start(vad_callback);
+//		
+//	joshvm_esp32_media_create(0,&handle_media_player);
+//	joshvm_esp32_media_set_source(handle_media_player,MP3_URI2);
+//	joshvm_esp32_media_start(handle_media_player,player_callback);
+//
+//	vTaskDelay(5000);
+//	//joshvm_esp32_media_stop(handle_media_player);
+//
+//	//extern joshvm_err_t joshvm_esp32_i2s_deinit(void);
+//	//joshvm_esp32_i2s_deinit();
+
+
+
+
+
 
 	
 	while(1){
