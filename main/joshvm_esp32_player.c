@@ -56,7 +56,7 @@
 
 //---variable
 esp_audio_handle_t player;
-int j_audioBoard_volume = 61;
+int j_audioBoard_volume = 60;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
 static TaskHandle_t esp_audio_state_task_handler = NULL;
 static int audio_pos = 0;
@@ -297,8 +297,10 @@ audio_err_t joshvm_volume_get_handler(int *volume)
 		 	ESP_LOGI(TAG, "[ * ] Get volume: %d %%", *volume);
 			return  ESP_OK;
 		 }
+		 return ESP_FAIL;
 	}
-	return  ESP_FAIL;
+	*volume = j_audioBoard_volume;
+	return  ESP_OK;
 }
 
 audio_err_t joshvm_volume_set_handler(int volume)

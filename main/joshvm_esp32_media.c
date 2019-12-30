@@ -127,7 +127,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.3                |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.4                |\n");
 		printf("|                         Compile data:Dec. 24 2019                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
@@ -1016,22 +1016,20 @@ int joshvm_esp32_media_get_volume(int* volume)
 int joshvm_esp32_media_set_volume(int volume)
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_set_volume");
-	//adjust
-	volume++;
 	return joshvm_volume_set_handler(volume);
 }
 
 int joshvm_esp32_media_add_volume()
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_add_volume");
-	joshvm_volume_adjust_handler(11);
+	joshvm_volume_adjust_handler(10);
 	return 0;
 }
 
 int joshvm_esp32_media_sub_volume()
 {
 	ESP_LOGI(TAG,"joshvm_esp32_media_sub_volume");
-	joshvm_volume_adjust_handler(-9);
+	joshvm_volume_adjust_handler(-10);
 	return 0;
 }
 
