@@ -99,7 +99,7 @@ void joshvm_app_init(void)
 	*/
 	vTaskDelay(500 / portTICK_PERIOD_MS);
 
-	while (1) {		
+	while (1) {
 		JavaTask(); 
 		
 		for (int i = 10; i >= 0; i--) {

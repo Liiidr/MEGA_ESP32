@@ -463,6 +463,22 @@ int joshvm_esp32_media_set_volume(int volume);
 int joshvm_esp32_media_add_volume();
 int joshvm_esp32_media_sub_volume();
 
+/**
+ * @brief get firmware version
+ *
+ * @note 
+ *
+ * @param 	info：save firmware version info
+ *			size：length of info need to small then size
+ *			
+ * @return (error code)
+ *     	0: ok
+ *     	-1: fail
+ *		...
+ */
+int joshvm_esp32_get_sys_info(char* info, int size);
+
+
 
 
 #endif
