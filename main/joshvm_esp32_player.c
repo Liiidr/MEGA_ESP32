@@ -174,8 +174,8 @@ static void setup_player(joshvm_media_t* handle)
     audio_element_set_tag(ts_dec_cfg, "ts");
     esp_audio_codec_lib_add(player, AUDIO_CODEC_TYPE_DECODER, ts_dec_cfg);
 
-    AUDIO_MEM_SHOW(TAG);
-    ESP_LOGI(TAG, "esp_audio instance is:%p", player);
+    //AUDIO_MEM_SHOW(TAG);
+    //ESP_LOGI(TAG, "esp_audio instance is:%p", player);
 }
 
 void joshvm_audio_player_destroy()
@@ -306,10 +306,12 @@ audio_err_t joshvm_volume_get_handler(int *volume)
 audio_err_t joshvm_volume_set_handler(int volume)
 {
 	if(volume < 0){
-		volume = 0;
+		ESP_LOGE(TAG,"Volume value must set between 0 to 100");
+		return ESP_FAIL;
 	}
 	if(volume > 100){
-		volume = 100;
+		ESP_LOGE(TAG,"Volume value must set between 0 to 100");
+		return ESP_FAIL;
 	}	
 
 	if(MegaBoard_handle == NULL){

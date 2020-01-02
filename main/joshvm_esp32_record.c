@@ -279,7 +279,7 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	}
 	audio_pipeline_link(recorder, (const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","file_media_rec"}, 4);
 	audio_element_set_uri(file_writer,handle->j_union.mediaRecorder.url);
-	ESP_LOGI(TAG,"Set default url:%s",handle->j_union.mediaRecorder.url);	
+	ESP_LOGI(TAG,"Init url:%s",handle->j_union.mediaRecorder.url);	
 	handle->j_union.mediaRecorder.recorder_t.i2s = i2s_stream_reader;
 	handle->j_union.mediaRecorder.recorder_t.filter = filter;
 	handle->j_union.mediaRecorder.recorder_t.stream_writer = file_writer;
@@ -290,7 +290,32 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 
 int joshvm_meida_recorder_formatcheck(joshvm_media_t *handle)
 {	
-	int url_size = strlen(handle->j_union.mediaRecorder.url);	
+	int url_size = strlen(handle->j_union.mediaRecorder.url);
+	
+	if(strstr((handle->j_union.mediaRecorder.url + url_size - 1),"/") == NULL){		
+		if(strstr(handle->j_union.mediaRecorder.url,".") == NULL){
+			switch(handle->j_union.mediaRecorder.format){
+				case joshvm_meida_format_wav:
+					strcat(handle->j_union.mediaRecorder.url,".wav");
+			break;
+				case joshvm_meida_format_amrnb:
+					strcat(handle->j_union.mediaRecorder.url,".amrnb");
+			break;
+				case joshvm_meida_format_amrwb:
+					strcat(handle->j_union.mediaRecorder.url,".amrwb");
+			break;
+				case joshvm_meida_format_opus:
+					strcat(handle->j_union.mediaRecorder.url,".opus");
+			break;
+				default:
+			break;	
+			}	
+		}
+	}else{
+		ESP_LOGE(TAG,"Filename error!");
+		return JOSHVM_FAIL;
+	}
+
 	switch(handle->j_union.mediaRecorder.format){
 		case joshvm_meida_format_wav:
 			if(strstr((handle->j_union.mediaRecorder.url + url_size - 4),".wav")\
@@ -324,10 +349,10 @@ int joshvm_meida_recorder_formatcheck(joshvm_media_t *handle)
 			|| strstr((handle->j_union.mediaRecorder.url + url_size - 5),".OPUS")\
 			) return JOSHVM_OK;			
 			break;
-		default:
-			return JOSHVM_FAIL;
+		default:			
 		break;
 	}
+	ESP_LOGE(TAG,"Set format does not match expanded-name!");
 	return JOSHVM_FAIL;
 }
 
@@ -354,6 +379,9 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
     writer_info.sample_rates = M_REC_CFG_RATE;
     audio_element_setinfo(handle->j_union.mediaRecorder.recorder_t.stream_writer, &writer_info);	
 	ESP_LOGI(TAG,"Prepare file_info %d  %d  %d",writer_info.sample_rates,writer_info.channels,writer_info.bits);
+	if(joshvm_meida_recorder_formatcheck(handle) != JOSHVM_OK){
+		return JOSHVM_FAIL;
+	}
 	int ret = audio_element_set_uri(handle->j_union.mediaRecorder.recorder_t.stream_writer,\
 									handle->j_union.mediaRecorder.url);
 	audio_pipeline_breakup_elements(handle->j_union.mediaRecorder.recorder_t.pipeline,\
@@ -361,10 +389,6 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 	audio_pipeline_relink(handle->j_union.mediaRecorder.recorder_t.pipeline, \
 		(const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","file_media_rec"}, 4);
 	ESP_LOGI(TAG,"Prepare url:%s,ret=%d",handle->j_union.mediaRecorder.url,ret);
-	if(joshvm_meida_recorder_formatcheck(handle) != JOSHVM_OK){
-		ESP_LOGE(TAG,"Set format does not match expanded-name!");
-		return JOSHVM_FAIL;
-	}
 	
 	return JOSHVM_OK;
 }
