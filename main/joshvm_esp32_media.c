@@ -127,7 +127,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.8                |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.9                |\n");
 		printf("|                         Compile data:Jan. 2 2020                           |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
@@ -286,6 +286,10 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			ESP_LOGI(TAG,"MediaPlayer closed!");			
 			break;
 		case MEDIA_RECORDER:
+			if(handle->j_union.mediaRecorder.status == AUDIO_START){
+				ESP_LOGE(TAG,"Can't release MediaRecorder when recording,need to stop it!");
+				return JOSHVM_FAIL;
+			}			
 			m_rec_obj_created_status = OBJ_CREATED_NOT;
 			joshvm_esp32_media_stop(handle);
 			xSemaphoreGive(s_mutex_recorder);
@@ -557,14 +561,19 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 			ret = JOSHVM_OK;			
 			break;
 		case MEDIA_RECORDER:
-			if(handle->j_union.mediaRecorder.obj_release_flag == OBJ_release_need){
+			if((handle->j_union.mediaRecorder.obj_release_flag == OBJ_release_need) 
+				|| (handle->j_union.mediaRecorder.status == AUDIO_START)){
 				handle->j_union.mediaRecorder.obj_release_flag = OBJ_release_no;
+				handle->j_union.mediaRecorder.status = AUDIO_STOP;
 				if(handle->j_union.mediaRecorder.recorder_t.pipeline == NULL)return JOSHVM_FAIL;
 				if(audio_pipeline_terminate(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK) return JOSHVM_FAIL;
 				joshvm_media_recorder_release(handle);
 				ESP_LOGI(TAG,"MediaRecorder stop!");
-			}
-			handle->j_union.mediaRecorder.status = AUDIO_STOP;
+			}else if(handle->j_union.mediaRecorder.status == AUDIO_STOP){
+			}else{
+				ESP_LOGE(TAG,"MediaRecorder can not be stopped before started!");
+				return JOSHVM_FAIL;
+			}			
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:	
@@ -612,8 +621,12 @@ int joshvm_esp32_media_reset(joshvm_media_t* handle)
 			ret = JOSHVM_OK;
 			break;
 		case MEDIA_RECORDER:
+			if(handle->j_union.mediaRecorder.status == AUDIO_START){
+				ESP_LOGE(TAG,"Can't reset MediaRecorder when recording!");
+				return JOSHVM_FAIL;
+			}			
 			handle->j_union.mediaRecorder.format = j_meida_rec_default_cfg.format;
-			handle->j_union.mediaRecorder.url = j_meida_rec_default_cfg.url;
+			//handle->j_union.mediaRecorder.url = j_meida_rec_default_cfg.url;
 			handle->j_union.mediaRecorder.sample_rate = j_meida_rec_default_cfg.sample_rate;
 			handle->j_union.mediaRecorder.channel = j_meida_rec_default_cfg.channel;
 			handle->j_union.mediaRecorder.bit_rate = j_meida_rec_default_cfg.bit_rate;
@@ -1056,7 +1069,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.8>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.9>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}
