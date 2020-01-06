@@ -246,7 +246,6 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	if(strstr(handle->j_union.mediaRecorder.url,fatfs_file) != NULL){
 		file_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
 	}else{
-		printf("spiffs url %s\n",handle->j_union.mediaRecorder.url);
 		file_writer = create_spiffs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
 	}
 	

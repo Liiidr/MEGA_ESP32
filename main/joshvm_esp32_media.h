@@ -42,14 +42,18 @@ typedef enum{
 }joshvm_type_t;
 
 enum{
+	NO_NEED_CB = 0,
+	NEED_CB
+}joshvm_audio_rb_callback_status_e;
+
+enum{
 	AUDIO_UNKNOW = 0,
+	AUDIO_PREPARE,
 	AUDIO_START,
 	AUDIO_STOP,
 	AUDIO_FINISH,//for track when stop and data playout will set audio_finish
-	AUDIO_PAUSE,
-	NO_NEED_CB,
-	NEED_CB,
-}joshvm_audio_rb_callback_status_e;
+	AUDIO_PAUSE
+}joshvm_status_e;
 
 enum{
 	OBJ_release_no = 0,	
@@ -68,11 +72,10 @@ typedef struct{
 	int32_t duration;	
 	EventGroupHandle_t evt_group_stop;//for player stop
 	int8_t obj_release_flag;
-	int8_t prepare_flag;
-	int8_t start_flag;
 }joshvm_media_mediaplayer_t;
 
 typedef struct{
+	int8_t status;
 	int8_t format;
 	char *url;	
 	uint32_t sample_rate;
@@ -86,8 +89,6 @@ typedef struct{
 		void* pipeline;
 	}recorder_t;
 	int8_t obj_release_flag;
-	int8_t prepare_flag;
-	int8_t start_flag;
 }joshvm_media_mediarecorder_t;
 
 typedef struct{
