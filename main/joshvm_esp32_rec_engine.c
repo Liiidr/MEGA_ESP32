@@ -95,6 +95,9 @@ extern SemaphoreHandle_t s_mutex_recorder;
 joshvm_err_t joshvm_esp32_i2s_create(void);
 
 uint32_t vad_off_time = 0;
+char *keywords[10];
+int8_t keyword_num = 0;
+
 //---fun
 esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type);
 
@@ -133,6 +136,7 @@ static void rec_engine_vad_callback(int16_t type)
 	}
 }
 
+
 static void rec_engine_task(void *handle)
 {
 	rec_engine_t* rec_engine = (rec_engine_t*)handle;
@@ -147,6 +151,13 @@ static void rec_engine_task(void *handle)
     get_wakenet_iface(&wakenet);
     get_wakenet_coeff(&model_coeff_getter);
     model_data = wakenet->create(model_coeff_getter, DET_MODE_90);
+	keyword_num = wakenet->get_word_num(model_data);
+	
+	memset(keywords,NULL,10 * sizeof(char));
+    for (int i = 1; i <= keyword_num; i++) {
+        keywords[i-1] = wakenet->get_word_name(model_data, i);
+        ESP_LOGI(TAG, "keywords: %s (index = %d)", keywords[i-1], i);
+    }
     int audio_chunksize = wakenet->get_samp_chunksize(model_data);
     int16_t *buff = (int16_t *)malloc(audio_chunksize * sizeof(short));
     if (NULL == buff) {
@@ -329,15 +340,24 @@ esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type)
 
 //---------------------------------------------
 int joshvm_esp32_wakeup_get_word_count(void)
-{	
-	return 1;
+{			
+	if(keyword_num){
+		return keyword_num;
+	}
+	ESP_LOGE(TAG,"WakeupManager enable to get wakeup word count");
+	return JOSHVM_FAIL;
 }
 
 int joshvm_esp32_wakeup_get_word(int pos, int* index, char* wordbuf, int wordlen, char* descbuf, int desclen)
 {
+	if(keyword_num == 0){
+		ESP_LOGE(TAG,"WakeupManager enable to get wakeup word!");
+		return JOSHVM_FAIL;
+	}
+
 	*index = 0;
-	memcpy(wordbuf,"Hi LeXin",sizeof("Hi LeXin"));	
-	memcpy(descbuf,"enjoy happy",sizeof("enjoy happy"));
+	memcpy(wordbuf,keywords[pos],strlen(keywords[pos]));	
+	memcpy(descbuf,"description",sizeof("description"));
 
 	return 0;
 }
@@ -345,8 +365,8 @@ int joshvm_esp32_wakeup_get_word(int pos, int* index, char* wordbuf, int wordlen
 int joshvm_esp32_wakeup_enable(void(*callback)(int))
 {
 	if(rec_engine.wakeup_state == WAKEUP_ENABLE){
-		ESP_LOGW(TAG,"wakeup has already enable");
-		return JOSHVM_INVALID_STATE;
+		ESP_LOGW(TAG,"WakeupManager has been enabled,it's useless to enable again!");
+		return JOSHVM_OK;
 	}
 
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
@@ -363,8 +383,8 @@ int joshvm_esp32_wakeup_disable()
 {
 	int8_t ret;
     if(rec_engine.wakeup_state == WAKEUP_DISABLE){
-		ESP_LOGW(TAG,"Can't disable wakeup when have not enable");
-		return JOSHVM_INVALID_STATE;
+		ESP_LOGW(TAG,"WakeupManager has been disabled,it's useless to disable again!");
+		return JOSHVM_OK;
 	}
 	ESP_LOGI(TAG,"joshvm_esp32_wakeup_disable");
 

@@ -15,8 +15,25 @@
 
 
 //---fun
-
 int joshvm_esp32_wakeup_get_word_count(void);
+
+
+/**
+ * @brief get wakeup word
+ *
+ * @note 
+ * @param 	pos:	range from 0 to conut-1(joshvm_esp32_wakeup_get_word_count)
+ *			index:	this is output param.wakeup word index
+ *			wordbuf:	wakeup word string addr
+ *			wordlen:	length of wakeup word
+ *			descbuf:	description of wakeup word
+ *			desclen:	length of descriptions			
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
 int joshvm_esp32_wakeup_get_word(int pos, int* index, char* wordbuf, int wordlen, char* descbuf, int desclen);
 
 
