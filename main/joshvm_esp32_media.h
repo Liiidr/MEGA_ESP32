@@ -64,14 +64,16 @@ typedef struct{
 	uint32_t sample_rate;
 	uint8_t channel;
 	uint8_t	bit_rate;
-	int positon;
-	int duration;	
+	int32_t positon;
+	int32_t duration;	
 	EventGroupHandle_t evt_group_stop;//for player stop
-	int obj_release_flag;
+	int8_t obj_release_flag;
+	int8_t prepare_flag;
+	int8_t start_flag;
 }joshvm_media_mediaplayer_t;
 
 typedef struct{
-	int format;
+	int8_t format;
 	char *url;	
 	uint32_t sample_rate;
 	uint8_t channel;
@@ -83,7 +85,9 @@ typedef struct{
 		void* stream_writer;
 		void* pipeline;
 	}recorder_t;
-	int obj_release_flag;
+	int8_t obj_release_flag;
+	int8_t prepare_flag;
+	int8_t start_flag;
 }joshvm_media_mediarecorder_t;
 
 typedef struct{
@@ -102,7 +106,7 @@ typedef struct{
 
 	ring_buffer_t *track_rb;
 	void(*callback)(void*, int);
-	int obj_release_flag;
+	int8_t obj_release_flag;
 }joshvm_media_audiotrack_t;
 
 typedef struct{
@@ -120,7 +124,7 @@ typedef struct{
 	}audiorecorder_t;
 
 	ring_buffer_t *rec_rb;
-	int obj_release_flag;
+	int8_t obj_release_flag;
 }joshvm_media_audiorecorder_t;
 
 typedef struct{
