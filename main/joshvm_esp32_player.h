@@ -49,6 +49,7 @@ audio_err_t joshvm_audio_pause(void);
 audio_err_t joshvm_audio_resume_handler(const char *url);
 audio_err_t joshvm_audio_stop_handler(joshvm_media_t* handle);
 int joshvm_audio_get_state();
+audio_err_t joshvm_audio_position_get(int *pos);
 audio_err_t joshvm_audio_time_get(int *time);
 
 audio_err_t joshvm_volume_get_handler(int *volume);

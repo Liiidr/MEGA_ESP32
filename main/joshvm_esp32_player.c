@@ -280,12 +280,29 @@ int joshvm_audio_get_state()
     return st.status;
 }
 
+audio_err_t joshvm_audio_position_get(int *pos)
+{
+	int ret;
+	if(player == NULL)return ESP_FAIL;
+	ret =  esp_audio_pos_get(player,pos);
+	if(ret == ESP_OK){
+		ESP_LOGI(TAG,"Get position currently:%d",*pos);
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG,"Get position err :%x",ret);
+	return ret;
+}
+
 audio_err_t joshvm_audio_time_get(int *time)
 {	
 	int ret;
 	if(player == NULL)return ESP_FAIL;
 	ret = esp_audio_time_get(player,time);
-	ESP_LOGI(TAG,"get time position currently:%d",*time);
+	if(ret == ESP_OK){
+		ESP_LOGI(TAG,"get time currently:%d",*time);
+		return ESP_OK;
+	}
+	ESP_LOGE(TAG,"get time err :%x",ret);
 	return ret;
 }
 
