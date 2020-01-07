@@ -310,7 +310,7 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 	}
 	
 	if(xSemaphoreTake( s_mutex_recorder, ( TickType_t ) 0 ) != pdTRUE){
-		ESP_LOGE(TAG,"recorder(such as meidaRecorder/audioRecorder/wakeup&vad) obj can only run one");
+		ESP_LOGE(TAG,"Only one obj of recorder(such as meidaRecorder/audioRecorder/wakeup&vad) can run!");
 		return JOSHVM_FAIL;
 	}
 	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);

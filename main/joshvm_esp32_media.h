@@ -52,7 +52,8 @@ enum{
 	AUDIO_START,
 	AUDIO_STOP,
 	AUDIO_FINISH,//for track when stop and data playout will set audio_finish
-	AUDIO_PAUSE
+	AUDIO_PAUSE,
+	AUDIO_CLOSE
 }joshvm_status_e;
 
 enum{
