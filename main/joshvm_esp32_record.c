@@ -471,13 +471,11 @@ int joshvm_audio_track_init(joshvm_media_t* handle)
 	audio_pipeline_register(audio_track, i2s_stream_writer, "i2s_audio_tra");
     audio_pipeline_link(audio_track, (const char *[]) {"raw_audio_tra","upsample_audio_tra", "i2s_audio_tra"}, 3);
 	
-    //ESP_LOGI(TAG, "track has been created");
 	handle->j_union.audioTrack.audiotrack_t.i2s = i2s_stream_writer;	
 	handle->j_union.audioTrack.audiotrack_t.filter = filter_sample_el;	
 	handle->j_union.audioTrack.audiotrack_t.raw_writer = raw_writer;
 	handle->j_union.audioTrack.audiotrack_t.pipeline = audio_track;
-	ESP_LOGW(TAG,"joshvm_audio_track_init = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
-
+	
 	return audio_pipeline_run(audio_track);
 }
 
@@ -543,6 +541,12 @@ pause:
 exit:	
 	ESP_LOGI(TAG,"AudioTrack finish playing");
 	joshvm_audio_track_release(handle);
+	if(((joshvm_media_t*)handle)->j_union.audioTrack.status == AUDIO_CLOSE){
+		if(handle){
+			audio_free(handle);		
+			handle = NULL;
+		}
+	}
 	if(voicebuff != NULL){
 		audio_free(voicebuff);
 		voicebuff = NULL;

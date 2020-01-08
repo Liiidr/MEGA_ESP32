@@ -127,7 +127,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.12               |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.13               |\n");
 		printf("|                         Compile data:Jan. 6 2020                           |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
@@ -305,11 +305,11 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			break;
 		case AUDIO_TRACK:
 			a_track_obj_created_status = OBJ_CREATED_NOT;
+			handle->j_union.audioTrack.status = AUDIO_CLOSE;
 			que_val = QUE_TRACK_CLOSE;
 			xQueueSend(handle->evt_que, &que_val, (portTickType)0);
 			if(handle->j_union.audioTrack.obj_release_flag == OBJ_release_need){
 				handle->j_union.audioTrack.obj_release_flag = OBJ_release_no;
-				printf("close      654654564654\n");
 				joshvm_esp32_media_stop(handle);
 			}
 			xSemaphoreGive(s_mutex_player);
@@ -317,7 +317,6 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 			if(handle->j_union.audioTrack.track_rb != NULL){
 				ring_buffer_deinit(handle->j_union.audioTrack.track_rb);
 			}
-			handle->j_union.audioTrack.status = AUDIO_CLOSE;
 			ESP_LOGI(TAG,"AudioTrack closed!");
 			break;
 		case AUDIO_RECORDER:
@@ -349,10 +348,12 @@ int joshvm_esp32_media_close(joshvm_media_t* handle)
 		handle->evt_que = NULL;
 	}
 
-	if(handle){
-		audio_free(handle);		
-		handle = NULL;
-	}
+	if(handle->media_type != AUDIO_TRACK){//release audioTrack handle at the end of audiotrack task
+		if(handle){
+			audio_free(handle);		
+			handle = NULL;
+		}
+	}	
 	
 	if((m_player_obj_created_status == OBJ_CREATED_NOT)\
 		&& (m_rec_obj_created_status == OBJ_CREATED_NOT)\
@@ -1145,7 +1146,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.12>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.13>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}
