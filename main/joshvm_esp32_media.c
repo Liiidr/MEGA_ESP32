@@ -127,8 +127,8 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.13               |\n");
-		printf("|                         Compile data:Jan. 6 2020                           |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.14               |\n");
+		printf("|                         Compile data:Jan. 8 2020                           |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
 
@@ -399,7 +399,7 @@ int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, in
 				}		
 				handle->j_union.mediaPlayer.obj_release_flag = OBJ_release_need;
 			}else{
-				ESP_LOGE(TAG,"MediaPlayer can not prepare again without reset MediaPlayer");
+				ESP_LOGE(TAG,"MediaPlayer can not prepare again without resetting MediaPlayer");
 				return JOSHVM_FAIL;
 			}				
 			break;
@@ -416,7 +416,7 @@ int joshvm_esp32_media_prepare(joshvm_media_t* handle, void(*callback)(void*, in
 					return JOSHVM_FAIL;
 				}
 			}else{
-				ESP_LOGE(TAG,"MediaRecorder can not prepare again without reset MediaRecorder");
+				ESP_LOGE(TAG,"MediaRecorder can not prepare again without resetting MediaRecorder");
 				return JOSHVM_FAIL;
 			}
 			break;
@@ -529,7 +529,11 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 	uint16_t que_val = 0;
 	int ret;	
 	switch(handle->media_type){
-		case MEDIA_PLAYER:			
+		case MEDIA_PLAYER:	
+			if(handle->j_union.mediaPlayer.status != AUDIO_START){
+				ESP_LOGE(TAG,"MediaPlayer can't be paused,when haven't been started.");
+				return JOSHVM_FAIL;
+			}
 			if(joshvm_audio_pause() != ESP_OK){
 				return JOSHVM_FAIL;
 			}
@@ -540,10 +544,14 @@ int joshvm_esp32_media_pause(joshvm_media_t* handle)
 			ret = JOSHVM_NOT_SUPPORTED;
 			break;
 		case AUDIO_TRACK:
+			if(handle->j_union.audioTrack.status != AUDIO_START){
+				ESP_LOGE(TAG,"AudioTrack can't be paused,when haven't been started.");
+				return JOSHVM_FAIL;
+			}
 			que_val = QUE_TRACK_PAUSE;
 			xQueueSend(que, &que_val, (portTickType)0);
 			handle->j_union.audioTrack.status = AUDIO_PAUSE;
-			ret = JOSHVM_OK;			
+			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
 			ret = JOSHVM_NOT_SUPPORTED;
@@ -577,7 +585,7 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				ESP_LOGI(TAG,"MediaPlayer stop!");
 			}else if(handle->j_union.mediaPlayer.status == AUDIO_STOP){
 			}else{
-				ESP_LOGE(TAG,"MediaPlayer can not be stopped without started!");
+				ESP_LOGE(TAG,"MediaPlayer can not be stopped without starting!");
 				return JOSHVM_FAIL;
 			}
 			ret = JOSHVM_OK;			
@@ -592,18 +600,23 @@ int joshvm_esp32_media_stop(joshvm_media_t* handle)
 				ESP_LOGI(TAG,"MediaRecorder stop!");
 			}else if(handle->j_union.mediaRecorder.status == AUDIO_STOP){
 			}else{
-				ESP_LOGE(TAG,"MediaRecorder can not be stopped without started!");
+				ESP_LOGE(TAG,"MediaRecorder can not be stopped without starting!");
 				return JOSHVM_FAIL;
 			}			
 			ret = JOSHVM_OK;
 			break;
-		case AUDIO_TRACK:	
-			handle->j_union.audioTrack.obj_release_flag = OBJ_release_no;
-			que_val = QUE_TRACK_STOP;
-			xQueueSend(que, &que_val, (portTickType)0);			
-			ESP_LOGI(TAG,"AudioTrack stop!");
-			handle->j_union.audioTrack.status = AUDIO_STOP;
-			ret = JOSHVM_OK;
+		case AUDIO_TRACK:
+			if(handle->j_union.audioTrack.status == AUDIO_START){
+				handle->j_union.audioTrack.obj_release_flag = OBJ_release_no;
+				que_val = QUE_TRACK_STOP;
+				xQueueSend(que, &que_val, (portTickType)0);			
+				ESP_LOGI(TAG,"AudioTrack stop!");
+				handle->j_union.audioTrack.status = AUDIO_STOP;
+				ret = JOSHVM_OK;
+			}else{
+				ESP_LOGE(TAG,"AudioTrack can not be stopped without playing!");
+				return JOSHVM_FAIL;
+			}
 			break;
 		case AUDIO_RECORDER:
 			handle->j_union.audioRecorder.obj_release_flag = OBJ_release_no;
@@ -779,7 +792,7 @@ int joshvm_esp32_media_flush(joshvm_media_t* handle)
 	}
 
 	if((handle->j_union.audioTrack.status != AUDIO_STOP) && (handle->j_union.audioTrack.status != AUDIO_PAUSE)){
-		ESP_LOGE(TAG,"Flush can only run when audioTrack was stopped or pause status!");
+		ESP_LOGE(TAG,"Flush data only when audioTrack was stopped or paused!");
 		return JOSHVM_FAIL;
 	}
 
@@ -1146,7 +1159,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.13>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.14 Jan 8 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}
