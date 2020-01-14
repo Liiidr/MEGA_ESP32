@@ -127,8 +127,8 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.14               |\n");
-		printf("|                         Compile data:Jan. 8 2020                           |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.15               |\n");
+		printf("|                         Compile date:Jan. 14 2020                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
 
@@ -1159,7 +1159,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.14 Jan 8 2020>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.15 Jan 14 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}

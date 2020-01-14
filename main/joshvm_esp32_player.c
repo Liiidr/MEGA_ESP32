@@ -58,7 +58,7 @@
 esp_audio_handle_t player;
 int j_audioBoard_volume = 60;
 static const char *TAG = "JOSHVM_ESP32_PLAYER";
-static TaskHandle_t esp_audio_state_task_handler = NULL;
+static TaskHandle_t joshvm_audio_state_task_handler = NULL;
 static int audio_pos = 0;
 extern audio_board_handle_t MegaBoard_handle;
 
@@ -67,12 +67,12 @@ typedef struct{
 	QueueHandle_t que;
 	joshvm_media_t* handle;
 }esp_audio_state_task_t;
-esp_audio_state_task_t esp_audio_state_task_param = {NULL,NULL};
+esp_audio_state_task_t joshvm_audio_state_task_param = {NULL,NULL};
 
 extern void javanotify_simplespeech_event(int, int);
 int joshvm_audio_play_handler(const char *url);
 
-static void esp_audio_state_task (void *para)
+static void joshvm_audio_state_task (void *para)
 {
     QueueHandle_t que = ((esp_audio_state_task_t *) para)->que;
 	joshvm_media_t *handle = ((esp_audio_state_task_t *) para)->handle;
@@ -113,7 +113,7 @@ int _http_stream_event_handle(http_stream_event_msg_t *msg)
 static void setup_player(joshvm_media_t* handle)
 {
     if (player) {
-		ESP_LOGW(TAG,"Player is NULL");
+		ESP_LOGW(TAG,"Player has already been created.");
         return ;
     }
     esp_audio_cfg_t cfg = DEFAULT_ESP_AUDIO_CONFIG();
@@ -122,9 +122,9 @@ static void setup_player(joshvm_media_t* handle)
     cfg.evt_que = xQueueCreate(3, sizeof(esp_audio_state_t));
     player = esp_audio_create(&cfg);
 
-	esp_audio_state_task_param.que = cfg.evt_que;
-	esp_audio_state_task_param.handle = handle; 
-	xTaskCreate(esp_audio_state_task, "esp_audio_state_task", 3 * 1024, (void*)&esp_audio_state_task_param, ESP_AUDIO_STATE_TASK_PRI, &esp_audio_state_task_handler);
+	joshvm_audio_state_task_param.que = cfg.evt_que;
+	joshvm_audio_state_task_param.handle = handle; 
+	xTaskCreate(joshvm_audio_state_task, "joshvm_audio_state_task", 3 * 1024, (void*)&joshvm_audio_state_task_param, JOSHVM_AUDIO_STATE_TASK_PRI, &joshvm_audio_state_task_handler);
 
     // Create readers and add to esp_audio
     fatfs_stream_cfg_t fs_reader = FATFS_STREAM_CFG_DEFAULT();
@@ -186,13 +186,13 @@ void joshvm_audio_player_destroy()
 			//josh_i2s_stream_writer = NULL;
 		}
 	}
-	if(esp_audio_state_task_handler != NULL){
-		vTaskDelete(esp_audio_state_task_handler);
-		esp_audio_state_task_handler = NULL;
+	if(joshvm_audio_state_task_handler != NULL){
+		vTaskDelete(joshvm_audio_state_task_handler);
+		joshvm_audio_state_task_handler = NULL;
 	}
-	if(esp_audio_state_task_param.que != NULL){
-		vQueueDelete(esp_audio_state_task_param.que);
-		esp_audio_state_task_param.que = NULL;
+	if(joshvm_audio_state_task_param.que != NULL){
+		vQueueDelete(joshvm_audio_state_task_param.que);
+		joshvm_audio_state_task_param.que = NULL;
 	}
 }
 

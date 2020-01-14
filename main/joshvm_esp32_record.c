@@ -518,8 +518,7 @@ pause:
 				}while(read_size > 0);
 				//get que_val	
 				if(que != NULL){	
-					xQueueReceive(que, &que_val, 0);
-					vTaskDelay(50/portTICK_PERIOD_MS);
+					xQueueReceive(que, &que_val, 50/portTICK_PERIOD_MS);
 				}else{
 					ESP_LOGW(TAG,"Are you close track without stop track before?");
 					task_run = 0;
