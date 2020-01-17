@@ -416,21 +416,25 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 
 int joshvm_esp32_vad_pause()
 {
-	if(rec_engine.pause_resume_flag == pause_resume_flag_resume){
-		rec_engine.pause_resume_flag = pause_resume_flag_pause;
-		rec_engine.vad_state = VAD_PAUSE;
-		rec_engine_vad_callback(VAD_PAUSE);
+	if(rec_engine.vad_state != VAD_START){
+		ESP_LOGE(TAG,"Pause VAD only when VAD was started!");
+		return JOSHVM_FAIL;
 	}
+
+	rec_engine.vad_state = VAD_PAUSE;
+	rec_engine_vad_callback(VAD_PAUSE);
 	return JOSHVM_OK;
 }
 
 int joshvm_esp32_vad_resume()
 {
-	if(rec_engine.pause_resume_flag == pause_resume_flag_pause){
-		rec_engine.pause_resume_flag = pause_resume_flag_resume;
-		rec_engine.vad_state = VAD_RESUME;
-		rec_engine_vad_callback(VAD_RESUME);
+	if(rec_engine.vad_state != VAD_PAUSE){
+		ESP_LOGE(TAG,"Resume VAD only when VAD was paused!");
+		return JOSHVM_FAIL;
 	}
+	
+	rec_engine.vad_state = VAD_RESUME;
+	rec_engine_vad_callback(VAD_RESUME);
 	return JOSHVM_OK;
 }
 

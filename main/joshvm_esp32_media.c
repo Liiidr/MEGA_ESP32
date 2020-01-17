@@ -127,8 +127,8 @@ int joshvm_esp32_media_create(int type, void** handle)
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.15               |\n");
-		printf("|                         Compile date:Jan. 14 2020                          |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.16               |\n");
+		printf("|                         Compile date:Jan. 17 2020                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
 
@@ -251,7 +251,7 @@ int joshvm_esp32_media_create(int type, void** handle)
 			joshvm_media_vad->evt_que = xQueueCreate(4, sizeof(esp_audio_state_t));
 
 			ring_buffer_init(&audio_vad_rb,A_VAD_RB_SIZE);
-			joshvm_media_vad->j_union.vad.rec_rb = &audio_vad_rb;								
+			joshvm_media_vad->j_union.vad.rec_rb = &audio_vad_rb;
 			*handle = joshvm_media_vad;
 			ESP_LOGI(TAG,"AudioVAD creating finish!");				
 		}else{
@@ -440,7 +440,7 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 		switch(handle->media_type){
 			case MEDIA_PLAYER:
 				//play
-				if((handle->j_union.mediaPlayer.status == AUDIO_PREPARE) || (handle->j_union.mediaPlayer.status == AUDIO_STOP)){
+				if(handle->j_union.mediaPlayer.status == AUDIO_PREPARE){
 					handle->j_union.mediaPlayer.callback = callback;
 					if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url) != ESP_OK){
 						return JOSHVM_FAIL;
@@ -456,18 +456,19 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 					ret = JOSHVM_OK;
 					break;
 				}else{
-					ESP_LOGE(TAG,"MediaPlayer only can be started after prepared/stopped/paused!");
+					ESP_LOGE(TAG,"MediaPlayer only can be started after prepared/paused!");
 					return JOSHVM_FAIL;
 				}
 				break;
 			case MEDIA_RECORDER:
-				if((handle->j_union.mediaRecorder.status == AUDIO_PREPARE) || (handle->j_union.mediaRecorder.status == AUDIO_STOP)){
+				if(handle->j_union.mediaRecorder.status == AUDIO_PREPARE){
+					if(handle->j_union.mediaRecorder.recorder_t.pipeline == NULL) return JOSHVM_FAIL;
 					if(audio_pipeline_run(handle->j_union.mediaRecorder.recorder_t.pipeline) != ESP_OK){
 						return JOSHVM_FAIL;
 					}
 					handle->j_union.mediaRecorder.status = AUDIO_START;
 				}else{
-					ESP_LOGE(TAG,"MediaRecorder only can be started after prepared/stopped!");
+					ESP_LOGE(TAG,"MediaRecorder only can be started after prepared!");
 					return JOSHVM_FAIL;
 				}
 				break;
@@ -791,10 +792,10 @@ int joshvm_esp32_media_flush(joshvm_media_t* handle)
 		return JOSHVM_FAIL;
 	}
 
-	if((handle->j_union.audioTrack.status != AUDIO_STOP) && (handle->j_union.audioTrack.status != AUDIO_PAUSE)){
-		ESP_LOGE(TAG,"Flush data only when audioTrack was stopped or paused!");
-		return JOSHVM_FAIL;
-	}
+//	if((handle->j_union.audioTrack.status != AUDIO_STOP) && (handle->j_union.audioTrack.status != AUDIO_PAUSE)){
+//		ESP_LOGE(TAG,"Flush data only when audioTrack was stopped or paused!");
+//		return JOSHVM_FAIL;
+//	}
 
 	ring_buffer_flush(handle->j_union.audioTrack.track_rb);
 	return 0;
@@ -844,7 +845,7 @@ int joshvm_esp32_media_set_audio_sample_rate(joshvm_media_t* handle, uint32_t va
 				handle->j_union.mediaRecorder.sample_rate = value;
 				return JOSHVM_OK;
 			}
-			ESP_LOGW(TAG,"Please set sample rate before mediaRecorder started!");
+			ESP_LOGW(TAG,"Please set sample rate before mediaRecorder prepared!");
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
@@ -896,7 +897,7 @@ int joshvm_esp32_media_set_channel_config(joshvm_media_t* handle, uint8_t value)
 				handle->j_union.mediaRecorder.channel = value;
 				return JOSHVM_OK;
 			}
-			ESP_LOGW(TAG,"Please set channel before mediaRecorder started!");
+			ESP_LOGW(TAG,"Please set channel before mediaRecorder prepared!");
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
@@ -943,7 +944,7 @@ int joshvm_esp32_media_set_audio_bit_rate(joshvm_media_t* handle, uint8_t value)
 				handle->j_union.mediaRecorder.bit_rate = value;
 				return JOSHVM_OK;
 			}
-			ESP_LOGW(TAG,"Please set bit rate before mediaRecorder started!");
+			ESP_LOGW(TAG,"Please set bit rate before mediaRecorder prepared!");
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
@@ -1026,7 +1027,7 @@ int joshvm_esp32_media_set_output_file(joshvm_media_t* handle, char* file)
 				handle->j_union.mediaRecorder.url = file;
 				return JOSHVM_OK;
 			}
-			ESP_LOGW(TAG,"Please set output file before mediaRecorder started");
+			ESP_LOGW(TAG,"Please set output file before mediaRecorder prepared");
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -1050,7 +1051,7 @@ int joshvm_esp32_media_set_output_format(joshvm_media_t* handle, int format)
 				handle->j_union.mediaRecorder.format = format;
 				return JOSHVM_OK;
 			}
-			ESP_LOGW(TAG,"Please set output format before mediaRecorder started");
+			ESP_LOGW(TAG,"Please set output format before mediaRecorder prepared");
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -1159,7 +1160,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.15 Jan 14 2020>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.16 Jan 17 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}
