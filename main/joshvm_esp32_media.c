@@ -122,13 +122,12 @@ joshvm_err_t joshvm_mep32_board_init()
 
 int joshvm_esp32_media_create(int type, void** handle)
 {
-	ESP_LOGW(TAG,"Create object,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	if(run_one_time == 0){
 		run_one_time = 1;		
 		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
 		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.16               |\n");
-		printf("|                         Compile date:Jan. 17 2020                          |\n");
+		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.17               |\n");
+		printf("|                         Compile date:Jan. 19 2020                          |\n");
 		printf("------------------------------------------------------------------------------\n");		
 	}
 
@@ -442,11 +441,10 @@ int joshvm_esp32_media_start(joshvm_media_t* handle, void(*callback)(void*, int)
 				//play
 				if(handle->j_union.mediaPlayer.status == AUDIO_PREPARE){
 					handle->j_union.mediaPlayer.callback = callback;
-					if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url) != ESP_OK){
+					if(joshvm_audio_play_handler(handle->j_union.mediaPlayer.url,0) != ESP_OK){
 						return JOSHVM_FAIL;
 					}
-					handle->j_union.mediaPlayer.status = AUDIO_START;
-					ESP_LOGW(TAG,"player,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
+					handle->j_union.mediaPlayer.status = AUDIO_START;		
 					break;
 				}
 				//pause->play
@@ -1091,10 +1089,12 @@ int joshvm_esp32_media_set_position(joshvm_media_t* handle, int pos, void(*callb
 		return JOSHVM_FAIL;
 	}
 
-	int ret;
+	int ret = JOSHVM_FAIL;
 	switch(handle->media_type){
 		case MEDIA_PLAYER:
-			ret = JOSHVM_FAIL;
+			if(joshvm_audio_position_set(handle, pos) == ESP_OK) {
+				return JOSHVM_OK;
+			}
 			break;
 		default :
 			ret = JOSHVM_NOT_SUPPORTED;
@@ -1160,7 +1160,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.16 Jan 17 2020>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.17 Jan 19 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}

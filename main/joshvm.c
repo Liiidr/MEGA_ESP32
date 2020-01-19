@@ -55,22 +55,7 @@ SemaphoreHandle_t s_mutex_player = NULL;
 
 //---define
 //---fun
-extern void javanotify_simplespeech_event(int, int);
 extern void JavaTask();
-extern int esp32_record_voicefile(unsigned char* filename, int time);
-extern int esp32_playback_voice(int index);
-extern void esp32_device_control(int);
-extern int esp32_read_voice_buffer(unsigned char*, int);
-extern int esp32_playback_voice_url(const char *url);
-extern void esp32_stop_playback(void);
-extern void esp32_stop_record(void);
-extern void JavaNativeTest();
-
-
-int esp32_read_voice_buffer(unsigned char* buffer,	int length)
-{
-	return 0;
-}
 
 void joshvm_app_init(void)
 {
@@ -89,8 +74,8 @@ void joshvm_app_init(void)
 #endif
 	app_wifi_service();
 	joshvm_vad_timer();
-	ESP_LOGW(TAG,"Before javatask,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	/*	
+	ESP_LOGW(TAG,"Before javatask,free heap size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 	printf("Main task Executing on core : %d\n",xPortGetCoreID());	
 	vTaskGetRunTimeStats(buff);
 	printf("JOSHVM_Audio,Run Time Stats:\nTask Name   Time	  Percent\n%s\n", buf);	
@@ -112,29 +97,3 @@ void joshvm_app_init(void)
 	}
 }
 
-/**
- * JOSH VM interface
- **/
-int esp32_playback_voice(int i) {
-	//NOT implemented
-	return 0;
-}
-
-int esp32_record_voicefile(unsigned char* filename, int time) {
-	//NOT implemented
-	return 0;
-}
-
-int esp32_playback_voice_url(const char *url)
-{
-	return 0;
-}
-
-void esp32_device_control(int command) {
-}
-
-void esp32_stop_playback() {
-}
-
-void esp32_stop_record() {
-}

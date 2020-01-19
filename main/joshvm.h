@@ -24,7 +24,6 @@
 
 #ifndef _JOSHVM_APP_H_
 #define _JOSHVM_APP_H_
-#include "recorder_engine.h"
 
 typedef enum 
 {	
@@ -42,23 +41,6 @@ typedef enum
 #define	JOSHVM_AUDIO_RECORDER_TASK_PRI	3
 
 void joshvm_app_init(void);
-
-
-/**
- * @brief 
- *
- * @note 
- *
- * @param 
- *
- * @return
- *     - >0 , number of bytes in returned buffer
- *     - =0, no data
- *     - -1, Reach the end of voice data (no bytes in buffer and VAD_STOP has been detected)
- *     - other, Read error
- */
-int esp32_read_voice_buffer(unsigned char* buffer,  int length);
-
 
 
 #endif

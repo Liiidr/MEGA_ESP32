@@ -70,7 +70,6 @@ typedef struct{
 esp_audio_state_task_t joshvm_audio_state_task_param = {NULL,NULL};
 
 extern void javanotify_simplespeech_event(int, int);
-int joshvm_audio_play_handler(const char *url);
 
 static void joshvm_audio_state_task (void *para)
 {
@@ -202,23 +201,23 @@ joshvm_err_t joshvm_audio_wrapper_init(joshvm_media_t* handle)
 	return JOSHVM_OK;
 }
 
-int joshvm_audio_play_handler(const char *url)
+audio_err_t joshvm_audio_play_handler(const char *url,int32_t pos)
 {
-	if(player == NULL)return JOSHVM_FAIL;	
+	if(player == NULL)return ESP_FAIL;	
 	if(url == NULL){
 		ESP_LOGE(TAG,"The playing url is illegal!");
-		return JOSHVM_FAIL;
+		return ESP_FAIL;
 	}
-	int ret = JOSHVM_FAIL;
+	int ret = ESP_FAIL;
 	esp_audio_state_t state;
 	esp_audio_state_get(player,&state);
 	if((state.status == AUDIO_STATUS_RUNNING) || (state.status == AUDIO_STATUS_PAUSED)){
 		ESP_LOGW(TAG,"player is playing,status :%d",state.status);
-		ret = JOSHVM_FAIL;
+		ret = ESP_FAIL;
 	}else{
 		ESP_LOGI(TAG, "Playing : %s", url);
-		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, 0);
-		printf("esp_audio_play ret %d\n",ret);
+		ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, url, pos);
+		//printf("esp_audio_play ret %d\n",ret);
 	}	
 	return ret;
 }
@@ -284,13 +283,28 @@ audio_err_t joshvm_audio_position_get(int *pos)
 {
 	int ret;
 	if(player == NULL)return ESP_FAIL;
-	ret =  esp_audio_pos_get(player,pos);
+	//ret =  esp_audio_pos_get(player,pos);
+	ret = esp_audio_time_get(player,pos);
 	if(ret == ESP_OK){
 		ESP_LOGI(TAG,"Get position currently:%d",*pos);
 		return ESP_OK;
 	}
 	ESP_LOGE(TAG,"Get position err :%x",ret);
 	return ret;
+}
+
+audio_err_t joshvm_audio_position_set(joshvm_media_t* handle, int pos)
+{
+	return ESP_FAIL;//not support
+//	if(handle->j_union.mediaPlayer.url == NULL)return ESP_FAIL;
+//	if(player == NULL)return ESP_FAIL;
+//	int ret = esp_audio_play(player, AUDIO_CODEC_TYPE_DECODER, handle->j_union.mediaPlayer.url, pos);
+//	if(ret == ESP_OK){
+//		ESP_LOGI(TAG,"Set position currently:%d",pos);
+//		return ESP_OK;
+//	}
+//	ESP_LOGE(TAG,"Set position err :%x",ret);
+//	return ret;
 }
 
 audio_err_t joshvm_audio_time_get(int *time)

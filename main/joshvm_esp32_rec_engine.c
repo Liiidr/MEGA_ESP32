@@ -246,7 +246,6 @@ static void rec_engine_task(void *handle)
 			switch (keyword) {
 				case WAKE_UP:
 					ESP_LOGI(TAG, "Wake up");
-					//ESP_LOGE(TAG,"heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 					//printf("vad task free stack :				%d\n",pvCreatedTask_vadtask);
 					//printf("xPortGetMinimumEverFreeHeapSize :   %d\n",xPortGetMinimumEverFreeHeapSize());
 
