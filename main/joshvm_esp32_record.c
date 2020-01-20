@@ -242,7 +242,11 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	audio_element_handle_t i2s_stream_reader = create_i2s_stream(RECORD_RATE,RECORD_BITS,RECORD_CHANNEL,AUDIO_STREAM_READER);
 	//---create resample_filter
 	audio_element_handle_t filter = create_filter(RECORD_RATE,RECORD_CHANNEL,SAVE_FILE_RATE,SAVE_FILE_CHANNEL,AUDIO_CODEC_TYPE_ENCODER);
-	//---create fatfs/spiffs element	
+	//---create fatfs/spiffs element
+	if(handle->j_union.mediaRecorder.url == NULL){
+		ESP_LOGE(TAG,"Media output file director illeage!");
+		return JOSHVM_FAIL;
+	}
 	if(strstr(handle->j_union.mediaRecorder.url,fatfs_file) != NULL){
 		file_writer = create_fatfs_stream(SAVE_FILE_RATE,SAVE_FILE_BITS,SAVE_FILE_CHANNEL,AUDIO_STREAM_WRITER);	
 	}else{
@@ -278,7 +282,8 @@ int joshvm_meida_recorder_init(joshvm_media_t  * handle)
 	}
 	audio_pipeline_link(recorder, (const char *[]) {"i2s_media_rec","resample_media_rec","encode_media_rec","file_media_rec"}, 4);
 	audio_element_set_uri(file_writer,handle->j_union.mediaRecorder.url);
-	ESP_LOGI(TAG,"Init url:%s",handle->j_union.mediaRecorder.url);	
+	ESP_LOGI(TAG,"Init url:%s",handle->j_union.mediaRecorder.url);
+		
 	handle->j_union.mediaRecorder.recorder_t.i2s = i2s_stream_reader;
 	handle->j_union.mediaRecorder.recorder_t.filter = filter;
 	handle->j_union.mediaRecorder.recorder_t.stream_writer = file_writer;

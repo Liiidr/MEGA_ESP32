@@ -112,8 +112,7 @@ static void rec_engine_vad_callback(int16_t type)
 			break;
 		case VAD_PAUSE:
 			if(need_notify_vad_stop == true){
-				ESP_LOGI(TAG,"VAD_PAUSE");
-				rec_engine.vad_callback(1);				
+				ESP_LOGI(TAG,"VAD_PAUSE");			
 				need_notify_vad_stop = false;
 				vad_writer_buff_flag = 0;
 			}else if(need_notify_vad_stop == false){
@@ -228,7 +227,6 @@ static void rec_engine_task(void *handle)
 			}
 			//vad stop		
 			if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){				
-				//ESP_LOGI(TAG,"vad_off_time = %d,need_notify_vad_stop = %d,rec_engine->vad_state = %d",vad_off_time * 200,need_notify_vad_stop,rec_engine->vad_state);
 				rec_engine_vad_callback(VAD_STOP);					
 			}
 			//save voice data

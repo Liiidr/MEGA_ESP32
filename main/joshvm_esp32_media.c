@@ -27,7 +27,7 @@ typedef struct{
 	int channel;
 	int bit_rate;
 }j_meida_rec_default_cfg_t;
-static j_meida_rec_default_cfg_t j_meida_rec_default_cfg = {joshvm_meida_format_wav,"/sdcard/default.wav",16000,1,16}; 
+static j_meida_rec_default_cfg_t j_meida_rec_default_cfg = {joshvm_meida_format_wav,NULL,16000,1,16}; 
 
 static struct{
 	int sample_rate;
@@ -54,7 +54,6 @@ uint8_t wakeup_obj_created_status = 0;
 static ring_buffer_t audio_recorder_rb;
 static ring_buffer_t audio_track_rb;
 static ring_buffer_t audio_vad_rb;
-static uint8_t run_one_time = 0;
 audio_board_handle_t MegaBoard_handle = NULL;
 extern SemaphoreHandle_t xSemaphore_MegaBoard_init;
 extern SemaphoreHandle_t s_mutex_recorder;
@@ -122,15 +121,6 @@ joshvm_err_t joshvm_mep32_board_init()
 
 int joshvm_esp32_media_create(int type, void** handle)
 {
-	if(run_one_time == 0){
-		run_one_time = 1;		
-		printf("-------------------------- JOSH OPEN SMART HARDWARE --------------------------\n");
-		printf("|                                                                            |\n");
-		printf("|                  MEGA_ESP32 Firmware Version alpha_v1.0.2.17               |\n");
-		printf("|                         Compile date:Jan. 19 2020                          |\n");
-		printf("------------------------------------------------------------------------------\n");		
-	}
-
 	if(joshvm_mep32_board_init() != JOSHVM_OK){
 		return JOSHVM_FAIL;
 	}
@@ -1160,7 +1150,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.17 Jan 19 2020>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.18 Jan 20 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}
