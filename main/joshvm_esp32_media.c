@@ -64,8 +64,6 @@ extern audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int 
 
 void joshvm_esp32_media_callback(joshvm_media_t * handle,joshvm_err_t errcode)
 {
-	ESP_LOGI(TAG,"joshvm_esp32_media_callback");
-
 	handle->j_union.mediaPlayer.callback(handle,errcode);
 }
 
@@ -251,7 +249,6 @@ int joshvm_esp32_media_create(int type, void** handle)
 	}
 	return JOSHVM_INVALID_ARGUMENT;
 }
-
 
 int joshvm_esp32_media_close(joshvm_media_t* handle)
 {
@@ -694,15 +691,56 @@ int joshvm_esp32_media_get_state(joshvm_media_t* handle, int* state)
 			return ret;
 			break;
 		case MEDIA_RECORDER:
-			joshvm_media_get_state(handle,state);
+			switch(handle->j_union.mediaRecorder.status){
+				case AUDIO_START:
+					*state = JOSHVM_MEDIA_RECORDING;
+					break;
+				case AUDIO_UNKNOW:
+				case AUDIO_PREPARE:
+				case AUDIO_CLOSE:
+				case AUDIO_STOP:
+					*state = JOSHVM_MEDIA_STOPPED;
+					break;
+				default:
+					*state = JOSHVM_MEDIA_RESERVE;
+					break;
+			}
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_TRACK:
-			joshvm_media_get_state(handle,state);
+			switch(handle->j_union.audioTrack.status){
+				case AUDIO_START:
+					*state = JOSHVM_MEDIA_PLAYING;
+					break;
+				case AUDIO_PAUSE:
+					*state = JOSHVM_MEDIA_PAUSED;
+					break;
+				case AUDIO_UNKNOW:
+				case AUDIO_FINISH:
+				case AUDIO_CLOSE:
+				case AUDIO_STOP:
+					*state = JOSHVM_MEDIA_STOPPED;
+					break;
+				default:
+					*state = JOSHVM_MEDIA_RESERVE;
+					break;
+			}			
 			ret = JOSHVM_OK;
 			break;
 		case AUDIO_RECORDER:
-			joshvm_media_get_state(handle,state);
+			switch(handle->j_union.audioRecorder.status){
+				case AUDIO_START:
+					*state = JOSHVM_MEDIA_RECORDING;
+					break;
+				case AUDIO_UNKNOW:
+				case AUDIO_CLOSE:
+				case AUDIO_STOP:
+					*state = JOSHVM_MEDIA_STOPPED;
+					break;
+				default:
+					*state = JOSHVM_MEDIA_RESERVE;
+					break;
+			}	
 			ret = JOSHVM_OK;
 			break;
 		default :
@@ -1150,7 +1188,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.2.18 Jan 20 2020>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version v1.0.2 Jan 20 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}

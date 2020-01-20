@@ -33,12 +33,11 @@ typedef enum
 	QUEUE_WAKEUP_END,
 }rec_ecb_event_type_t;
 
-#define JOSHVM_CYCLEBUF_BUFFER_SIZE (REC_ONE_BLOCK_SIZE * 60)
-#define VAD_TASK_PRI					4
-#define JOSHVM_AUDIO_STATE_TASK_PRI		2
 #define JOSHVM_AUDIO_STATE_TASK_PRI		2
 #define	JOSHVM_AUDIO_TRACK_TASK_PRI		5
 #define	JOSHVM_AUDIO_RECORDER_TASK_PRI	3
+#define JOSH_WIFI_TASK_PRI				5
+#define REC_ENGINE_TASK_PRI				20
 
 void joshvm_app_init(void);
 

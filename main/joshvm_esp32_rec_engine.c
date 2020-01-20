@@ -310,7 +310,7 @@ static esp_err_t joshvm_rec_engine_create(rec_engine_t* rec_engine,rec_status_e 
 		ESP_LOGE(TAG,"Only one obj of recorder(such as meidaRecorder/audioRecorder/wakeup&vad) can run!");
 		return JOSHVM_FAIL;
 	}
-	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, 20, NULL);
+	xTaskCreate(rec_engine_task, "rec_engine_task",4*1024, rec_engine, REC_ENGINE_TASK_PRI, NULL);
 	return 0;
 }
 

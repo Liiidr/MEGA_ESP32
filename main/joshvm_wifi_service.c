@@ -7,7 +7,7 @@
 #include "freertos/queue.h"
 #include "freertos/event_groups.h"
 #include "audio_mem.h"
-#include "app_wifi_service.h"
+#include "joshvm_wifi_service.h"
 #include "wifi_service.h"
 #include "airkiss_config.h"
 #include "smart_config.h"
@@ -15,6 +15,7 @@
 #include "esp_wifi.h"
 #include "joshvm_esp32_media.h"
 #include "esp_spiffs.h"
+#include "joshvm.h"
 
 static const char *TAG              = "APP_WIFI_SERVICE";
 
@@ -212,7 +213,7 @@ static esp_err_t app_wifi_service_cb(periph_service_handle_t handle, periph_serv
     return ESP_OK;
 }
 
-static void app_wifi_task(void *parameter)
+static void josh_wifi_task(void *parameter)
 {
 	uint32_t r_queue = 0;
 	int8_t cnt = 0;	
@@ -287,7 +288,7 @@ void app_wifi_service(void)
 	wifi_service_register_setting_handle(wifi_serv, h, &reg_idx);
 	//wifi_service_set_sta_info(wifi_serv, &sta_cfg);
 	
-	xTaskCreate(app_wifi_task,"app_wifi_task",3*1024,NULL,5,NULL);	
+	xTaskCreate(josh_wifi_task,"josh_wifi_task",3*1024,NULL,JOSH_WIFI_TASK_PRI,NULL);	
 }
 
 joshvm_err_t joshvm_esp32_wifi_set(char* ssid, char* password, int force)

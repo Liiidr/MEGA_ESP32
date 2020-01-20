@@ -16,7 +16,7 @@
 #include "driver/sdmmc_host.h"
 #include "driver/sdspi_host.h"
 #include "sdmmc_cmd.h"
-#include "sd_card_init.h"
+#include "joshvm_sd_card_init.h"
 
 static const char *TAG = "SDCARD";
 

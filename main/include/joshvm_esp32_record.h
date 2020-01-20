@@ -87,24 +87,6 @@ int joshvm_meida_recorder_init(joshvm_media_t * handle);
 int joshvm_meida_recorder_cfg(joshvm_media_t *handle);
 
 /**
- * @brief get meida recorder state
- *
- * @note 
- * @param 	
- *			handle
- *[out]	  state
- *    		- 1:stop
- *			  2:pause
- *			  3:playing/recording
- *
- * @return (error code)
- *     - 0: ok
- *     	 -1: fail
- *		...
- */
-int joshvm_media_get_state(joshvm_media_t* handle,int* state);
-
-/**
  * @brief init audio track
  *
  * @note 

@@ -51,7 +51,6 @@
 #define TRACK_CHENK_TIMEOUT 800
 //---variable
 uint16_t track_check_time_cnt = 0;
-//audio_element_handle_t josh_i2s_stream_reader = NULL,josh_i2s_stream_writer = NULL;
 extern TaskHandle_t audio_track_handler;
 
 typedef struct rsp_filter {
@@ -104,7 +103,6 @@ audio_element_handle_t create_i2s_stream(int sample_rates, int bits, int channel
 {
     i2s_stream_cfg_t i2s_cfg = I2S_STREAM_CFG_DEFAULT();
 	#if (defined CONFIG_ESP_LYRAT_MINI_V1_1_BOARD) || (defined CONFIG_JOSH_EVB_MEGA_ESP32_V1_0_BOARD) 
-		//printf("ESP_LYRAT_MINI_V1_1_BOARD or MEGA_ESP32_V1_0_BOARD\n");
 		if(AUDIO_STREAM_READER == type){
 			i2s_cfg.i2s_port = 1;	
 			i2s_cfg.i2s_config.use_apll = 0;
@@ -395,60 +393,6 @@ int joshvm_meida_recorder_cfg(joshvm_media_t *handle)
 	ESP_LOGI(TAG,"Prepare url:%s,ret=%d",handle->j_union.mediaRecorder.url,ret);
 	
 	return JOSHVM_OK;
-}
-
-int joshvm_media_get_state(joshvm_media_t* handle,int* state)
-{
-	int ret = JOSHVM_FAIL;
-	switch(handle->media_type)
-	{
-		case MEDIA_RECORDER:
-			if(handle->j_union.mediaRecorder.recorder_t.i2s == NULL){
-				*state = JOSHVM_MEDIA_STOPPED;//??
-				return JOSHVM_OK;
-			}
-			ret = audio_element_get_state(handle->j_union.mediaRecorder.recorder_t.i2s);
-			break;
-		case AUDIO_TRACK:
-			if(handle->j_union.audioTrack.audiotrack_t.i2s == NULL){
-				*state = JOSHVM_MEDIA_STOPPED;//??
-				return JOSHVM_OK;
-			}
-			ret = audio_element_get_state(handle->j_union.audioTrack.audiotrack_t.i2s);		
-			break;
-		case AUDIO_RECORDER:
-			if(handle->j_union.audioRecorder.audiorecorder_t.i2s == NULL){
-				*state = JOSHVM_MEDIA_STOPPED;//??
-				return JOSHVM_OK;
-			}
-			ret = audio_element_get_state(handle->j_union.audioRecorder.audiorecorder_t.i2s);
-			
-			break;
-		default :
-			ret = JOSHVM_NOT_SUPPORTED;
-			break;
-	}
-	
-	switch(ret){
-		case AEL_STATE_FINISHED:
-		case AEL_STATE_STOPPED:
-			*state = JOSHVM_MEDIA_STOPPED;
-			ret = JOSHVM_OK;
-			break;
-		case AEL_STATE_PAUSED:
-			*state = JOSHVM_MEDIA_PAUSED;	
-			ret = JOSHVM_OK;
-			break;
-		case AEL_STATE_RUNNING:
-			*state = JOSHVM_MEDIA_RECORDING;
-			ret = JOSHVM_OK;
-			break;
-		default:
-			*state = JOSHVM_MEDIA_RESERVE;
-			ret = JOSHVM_FAIL;
-			break;		
-	}
-	return ret;	
 }
 
 int joshvm_audio_track_init(joshvm_media_t* handle)

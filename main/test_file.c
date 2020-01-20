@@ -204,10 +204,10 @@ void test_esp32_media(void)
 	
 	//joshvm_esp32_wakeup_enable(media_player_callback_test);
 
+	int state = 99;
 
-
-	
-
+	joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("1 state = %d\n",state);
 
 	//joshvm_esp32_media_create(0,&handle_media_player_test);
 	//joshvm_esp32_media_create(1,&handle_media_rec_test);
@@ -215,12 +215,17 @@ void test_esp32_media(void)
 	joshvm_esp32_media_create(3,&handle_recorder_test);
 	//joshvm_esp32_vad_start(test_vad_callback);
 
+	joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("2 state = %d\n",state);
 
 	//audio_track  audio_recorder
 
 	joshvm_esp32_media_start(handle_recorder_test,media_player_callback_test);
 	vTaskDelay(10000 / portTICK_PERIOD_MS); 
 	joshvm_esp32_media_stop(handle_recorder_test);
+
+	joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("3 state = %d\n",state);
 
 	//joshvm_esp32_vad_stop();
 
@@ -233,8 +238,13 @@ void test_esp32_media(void)
 	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
 //	printf("3valie_size = %d\n",handle_recorder_test->j_union.audioRecorder.rec_rb->valid_size);
 //	printf("4valie_size = %d\n",handle_track_test->j_union.audioTrack.track_rb->valid_size);
+	joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("4 state = %d\n",state);
+
 	
 	joshvm_esp32_media_pause(handle_track_test);
+		joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("5 state = %d\n",state);
 
 
 	handle_track_test->j_union.audioTrack.track_rb = handle_recorder_test->j_union.audioRecorder.rec_rb;
@@ -243,6 +253,9 @@ void test_esp32_media(void)
 
 
 	joshvm_esp32_media_start(handle_track_test,media_player_callback_test);
+	joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("6 state = %d\n",state);
+
 
 	vTaskDelay(5000 / portTICK_PERIOD_MS); 
 
@@ -254,6 +267,8 @@ void test_esp32_media(void)
 	printf("track  %d\n",audio_element_get_state(handle_track_test->j_union.audioTrack.audiotrack_t.i2s));
 	joshvm_esp32_media_stop(handle_track_test);
 
+	joshvm_esp32_media_get_state(handle_track_test,&state);
+	printf("7 state = %d\n",state);
 
 
 /*
