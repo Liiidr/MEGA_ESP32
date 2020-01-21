@@ -20,6 +20,8 @@
 #include "filter_resample.h"
 #include "esp_wn_iface.h"
 #include "esp_wn_models.h"
+#include "esp_mn_iface.h"
+#include "esp_mn_models.h"
 #include "rec_eng_helper.h"
 #include "sdkconfig.h"
 #include "audio_mem.h"
@@ -77,16 +79,18 @@ typedef struct{
 	int8_t vad_state;
 	int8_t pause_resume_flag;
 	uint32_t vad_off_time;
+	int8_t vad_mode;
 	void(*wakeup_callback)(int);//notify jvm
-	void(*vad_callback)(int);//notify jvm
+	void(*vad_callback)(int,int);//notify jvm
 }rec_engine_t;
 
 //---variable
 static const char *TAG = "JOSHVM_REC_ENGINE";
-rec_engine_t rec_engine  = {WAKEUP_DISABLE,VAD_STOP,pause_resume_flag_resume,1000,NULL,NULL};
+rec_engine_t rec_engine  = {WAKEUP_DISABLE,VAD_STOP,pause_resume_flag_resume,1000,0,NULL,NULL};
 static int8_t need_notify_vad_stop = false;
 static int8_t task_run =1;
 static 	int8_t vad_writer_buff_flag = 0;
+static 	vad_state_t last_vad_state = 0;
 extern joshvm_media_t *joshvm_media_vad;
 extern uint8_t wakeup_obj_created_status;
 extern audio_element_handle_t josh_i2s_stream_reader;
@@ -101,14 +105,13 @@ int8_t keyword_num = 0;
 //---fun
 esp_err_t joshvm_rec_engine_destroy(rec_engine_t* rec_engine,rec_status_e type);
 
-
 static void rec_engine_vad_callback(int16_t type)
 {
 
 	switch(type){
 		case VAD_START:
 			ESP_LOGI(TAG,"VAD_START");
-			rec_engine.vad_callback(0);
+			rec_engine.vad_callback(0,0);
 			break;
 		case VAD_PAUSE:
 			if(need_notify_vad_stop == true){
@@ -125,7 +128,7 @@ static void rec_engine_vad_callback(int16_t type)
 			break;
 		case VAD_STOP:
 			ESP_LOGI(TAG,"VAD_STOP");
-			rec_engine.vad_callback(1);
+			rec_engine.vad_callback(1,0);
 			joshvm_media_vad->j_union.vad.status = AUDIO_STOP;
 			need_notify_vad_stop = false;	
 			vad_writer_buff_flag = 0;
@@ -136,33 +139,72 @@ static void rec_engine_vad_callback(int16_t type)
 }
 
 
+static void vad_detect(rec_engine_t* rec_engine,vad_handle_t vad_inst, int16_t *buff,int16_t buff_size)
+{	
+	uint32_t written_size = 0;
+
+	vad_state_t vad_state = vad_process(vad_inst, buff);
+	//clear timer,vad_off_time increase 1 per 200ms
+	if(vad_state == VAD_SPEECH){				
+		vad_off_time = 0;
+	}			
+		
+	//detect voice 
+	if((vad_state != last_vad_state) && (vad_state == VAD_SPEECH) && (vad_writer_buff_flag == 0)){
+		rec_engine_vad_callback(VAD_START); 		
+		last_vad_state = vad_state; 
+		vad_writer_buff_flag = 1;	
+		joshvm_media_vad->j_union.vad.rb_callback_flag = NO_NEED_CB;//init
+	}else if((vad_state != last_vad_state) && (vad_state == VAD_SILENCE)){
+		last_vad_state = vad_state;
+		need_notify_vad_stop = true;
+	}
+	//vad stop
+	if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){				
+		rec_engine_vad_callback(VAD_STOP);					
+	}
+	//save voice data
+	if((vad_writer_buff_flag) || (NEED_CB == joshvm_media_vad->j_union.vad.rb_callback_flag)){
+		written_size = ring_buffer_write(buff,buff_size,joshvm_media_vad->j_union.vad.rec_rb,RB_COVER);
+		if((written_size) && (NEED_CB == joshvm_media_vad->j_union.vad.rb_callback_flag)){
+			joshvm_media_vad->j_union.vad.rb_callback_flag = NO_NEED_CB;
+			joshvm_media_vad->j_union.vad.rb_callback(joshvm_media_vad,JOSHVM_OK);
+		}
+	}
+}
+
 static void rec_engine_task(void *handle)
 {
 	rec_engine_t* rec_engine = (rec_engine_t*)handle;
-	vad_state_t last_vad_state = 0;
-	vad_state_t vad_state = 0;
-	uint32_t written_size = 0;
-
-    esp_wn_iface_t *wakenet;
-    model_coeff_getter_t *model_coeff_getter;
-    model_iface_data_t *model_data;
+	//WakeNet
+    esp_wn_iface_t *wakenet;// = &WAKENET_MODEL;
+    model_coeff_getter_t *model_coeff_getter;// = &WAKENET_COEFF;
+    model_iface_data_t *model_data_wn = NULL;
 
     get_wakenet_iface(&wakenet);
     get_wakenet_coeff(&model_coeff_getter);
-    model_data = wakenet->create(model_coeff_getter, DET_MODE_90);
-	keyword_num = wakenet->get_word_num(model_data);
+    model_data_wn = wakenet->create(model_coeff_getter, DET_MODE_90);
+	keyword_num = wakenet->get_word_num(model_data_wn);
+	//MultiNet
+	const esp_mn_iface_t *multinet = &MULTINET_MODEL;
+	model_iface_data_t *model_data_mn = NULL;
+	model_data_mn = multinet->create(&MULTINET_COEFF, 6000);
+    int16_t chunk_num = multinet->get_samp_chunknum(model_data_mn);
+    printf("chunk_num = %d\n", chunk_num);
 	
 	memset(keywords,NULL,10 * sizeof(char));
     for (int i = 1; i <= keyword_num; i++) {
-        keywords[i-1] = wakenet->get_word_name(model_data, i);
+        keywords[i-1] = wakenet->get_word_name(model_data_wn, i);
         ESP_LOGI(TAG, "keywords: %s (index = %d)", keywords[i-1], i);
     }
-    int audio_chunksize = wakenet->get_samp_chunksize(model_data);
+    int16_t audio_chunksize = wakenet->get_samp_chunksize(model_data_wn);
     int16_t *buff = (int16_t *)malloc(audio_chunksize * sizeof(short));
     if (NULL == buff) {
         ESP_LOGE(TAG, "Memory allocation failed!");
-        wakenet->destroy(model_data);
-        model_data = NULL;
+        wakenet->destroy(model_data_wn);
+		multinet->destroy(model_data_mn);
+        model_data_wn = NULL;
+		model_data_mn = NULL;
         return;
     }
 
@@ -203,44 +245,39 @@ static void rec_engine_task(void *handle)
 	audio_pipeline_link(pipeline, (const char *[]) {"i2s_rec_engine", "filter_rec_engine", "raw_rec_engine"}, 3);
 	audio_pipeline_run(pipeline);
 	vad_handle_t vad_inst = vad_create(VAD_MODE_3, VAD_SAMPLE_RATE_HZ, VAD_FRAME_LENGTH_MS);
-		
+
+	int16_t mn_chunks = 0;
 	task_run = 1;
 	while (task_run) {
 		raw_stream_read(raw_read, (char *)buff, audio_chunksize * sizeof(short));
-		if((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME)){
-			vad_state = vad_process(vad_inst, buff);
-
- 			//clear timer,vad_off_time increase 1 per 200ms
-			if(vad_state == VAD_SPEECH){				
-				vad_off_time = 0;
-			}			
-				
-			//detect voice 
-			if((vad_state != last_vad_state) && (vad_state == VAD_SPEECH) && (vad_writer_buff_flag == 0)){
-				rec_engine_vad_callback(VAD_START);			
-				last_vad_state = vad_state;	
-				vad_writer_buff_flag = 1;	
-				joshvm_media_vad->j_union.vad.rb_callback_flag = NO_NEED_CB;//init
-			}else if((vad_state != last_vad_state) && (vad_state == VAD_SILENCE)){
-				last_vad_state = vad_state;
-				need_notify_vad_stop = true;
+		
+		//recognize commands
+		if(rec_engine->vad_mode && (rec_engine->vad_state == VAD_START)){
+			int command_id = multinet->detect(model_data_mn, buff);
+			mn_chunks++;
+			if (command_id > -1) {
+				rec_engine->vad_callback(2,command_id);
+				joshvm_esp32_vad_stop();
 			}
-			//vad stop		
-			if(((vad_off_time * 200) >= rec_engine->vad_off_time) && (need_notify_vad_stop == true)){				
-				rec_engine_vad_callback(VAD_STOP);					
+			//timeout
+			if (mn_chunks == chunk_num) {
+				mn_chunks = 0;
+				rec_engine->vad_callback(2,-1);
+				printf("can not recognize any speech commands\n");
+				joshvm_esp32_vad_stop();
 			}
-			//save voice data
-			if((vad_writer_buff_flag) || (NEED_CB == joshvm_media_vad->j_union.vad.rb_callback_flag)){
-				written_size = ring_buffer_write(buff,audio_chunksize,joshvm_media_vad->j_union.vad.rec_rb,RB_COVER);
-				if((written_size) && (NEED_CB == joshvm_media_vad->j_union.vad.rb_callback_flag)){
-					joshvm_media_vad->j_union.vad.rb_callback_flag = NO_NEED_CB;
-					joshvm_media_vad->j_union.vad.rb_callback(joshvm_media_vad,JOSHVM_OK);
-				}
-			}
+			ring_buffer_write(buff,audio_chunksize * sizeof(short),joshvm_media_vad->j_union.vad.rec_rb,RB_COVER);
 		}
-
+		
+		//vad detect
+		if((rec_engine->vad_mode == 0)
+		&& ((rec_engine->vad_state == VAD_START) || (rec_engine->vad_state == VAD_RESUME))){			
+			vad_detect(rec_engine,vad_inst,buff,audio_chunksize * sizeof(short));
+		}
+		
+		//wakeup detect
 		if(rec_engine->wakeup_state == WAKEUP_ENABLE){
-			int keyword = wakenet->detect(model_data, (int16_t *)buff);
+			int keyword = wakenet->detect(model_data_wn, (int16_t *)buff);
 			switch (keyword) {
 				case WAKE_UP:
 					ESP_LOGI(TAG, "Wake up");
@@ -275,8 +312,10 @@ static void rec_engine_task(void *handle)
 	}
 	audio_element_deinit(filter);
 
-    wakenet->destroy(model_data);
-    model_data = NULL;
+    wakenet->destroy(model_data_wn);
+	multinet->destroy(model_data_mn);
+    model_data_wn = NULL;
+	model_data_mn = NULL;
     free(buff);
     buff = NULL;	
 	vTaskDelete(NULL);
@@ -390,7 +429,7 @@ int joshvm_esp32_wakeup_disable()
 	return ret;
 }
 
-int joshvm_esp32_vad_start(void(*callback)(int))
+int joshvm_esp32_vad_start(int mode,void(*callback)(int,int))
 {	
     if(rec_engine.vad_state == VAD_START){
 		ESP_LOGW(TAG,"vad has already start");
@@ -398,7 +437,7 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 	}
 
 	if(joshvm_media_vad == NULL){
-		ESP_LOGI(TAG,"Vad obj have't created!");
+		ESP_LOGE(TAG,"Vad obj have't created!");
 		return JOSHVM_FAIL;
 	}
 
@@ -408,6 +447,7 @@ int joshvm_esp32_vad_start(void(*callback)(int))
 	joshvm_media_vad->j_union.vad.status = AUDIO_START;	
 	rec_engine.vad_off_time = VAD_OFF_TIME;
 	rec_engine.vad_callback = callback;
+	rec_engine.vad_mode = mode;
 	return joshvm_rec_engine_create(&rec_engine,VAD_START);
 }
 

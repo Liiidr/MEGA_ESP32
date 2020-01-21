@@ -95,13 +95,27 @@ static void *handle_vad_rec = NULL;
 
 extern int esp32_playback_voice(int index);
 
+
+void test_callback(int index)
+{
+	printf("wakeup   callback  index = %d\n",index);
+	
+}
+
+void test_vad_callback(int index,int arg)
+{
+	printf("vad   callback  ---------------- index = %d,arg = %d\n",index,arg);
+	
+}
+
+
 static void player_callback(void* para, int para2)
 {
 	printf("finish play  index = %d\n",para2);
 	ESP_LOGE("TEST>>>>>>>>","player start heap_caps_get_free_size = %d",heap_caps_get_free_size(MALLOC_CAP_INTERNAL|MALLOC_CAP_8BIT));
 }
 
-static void vad_callback(int index)
+static void vad_callback(int index,int arg)
 {
 	printf("***vad*** callback  %s\n",(index == 0 ? "start":"stop"));
 
@@ -132,7 +146,7 @@ static void wake_callback(int index)
 	printf("wakeup callback  index = %d\n",index);
 	//esp32_playback_voice(4);
 	//joshvm_esp32_media_create(4,&handle_vad_rec);
-	joshvm_esp32_vad_start(vad_callback);	
+	joshvm_esp32_vad_start(1,test_vad_callback);
 }
 
 void wakeup_test()
@@ -295,24 +309,13 @@ void test_esp32_media(void)
 
 //--test-------------------
 
-void test_callback(int index)
-{
-	printf("wakeup   callback  index = %d\n",index);
-	
-}
-
-void test_vad_callback(int index)
-{
-	printf("vad   callback  ---------------- index = %d\n",index);
-	
-}
-
 void test_rec_engine(void)
 {
 
-	joshvm_esp32_wakeup_enable(test_callback);
+	//joshvm_esp32_wakeup_enable(test_callback);
+	joshvm_esp32_media_create(4,&handle_vad_rec);
 
-	joshvm_esp32_vad_start(test_vad_callback);
+	//joshvm_esp32_vad_start(1,test_vad_callback);
 
 
 }

@@ -65,8 +65,22 @@ int joshvm_esp32_wakeup_enable(void(*callback)(int));
  */
 int joshvm_esp32_wakeup_disable();
 
-
-int joshvm_esp32_vad_start(void(*callback)(int));
+/**
+ * @brief start vad or command detect
+ *
+ * @note 
+ * @param 
+ *			mode:	0:vad(default)	1:command detect
+ *			callback(param0,param1):
+ *					param0:	 0:vad start	1:vad stop	2:command detected
+ *					param1:(only for command detected)  -1:detected failed  0-99:command ID
+ *
+ * @return (error code)
+ *     - 0: ok
+ *     	 -1: fail
+ *		...
+ */
+int joshvm_esp32_vad_start(int mode, void(*callback)(int, int));
 int joshvm_esp32_vad_pause();
 int joshvm_esp32_vad_resume();
 int joshvm_esp32_vad_stop();

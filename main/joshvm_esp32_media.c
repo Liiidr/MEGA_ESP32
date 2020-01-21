@@ -1188,7 +1188,7 @@ int joshvm_esp32_media_sub_volume()
 
 int joshvm_esp32_get_sys_info(char* info, int size)
 {
-	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version v1.0.2 Jan 20 2020>>>";
+	char firmware_version[] = "<<<JOSH_EVB MEGA ESP32 Firmware Version alpha_v1.0.3.0 Jan 21 2020>>>";
 	if(size < strlen(firmware_version)){
 		return JOSHVM_FAIL;
 	}

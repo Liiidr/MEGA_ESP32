@@ -52,7 +52,6 @@ SemaphoreHandle_t xSemaphore_MegaBoard_init = NULL;
 SemaphoreHandle_t s_mutex_recorder = NULL;
 SemaphoreHandle_t s_mutex_player = NULL;
 
-
 //---define
 //---fun
 extern void JavaTask();
